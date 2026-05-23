@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FoodieMenu — Thực đơn Online</title>
+
+  <!-- Bootstrap 5 CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ── Navbar ──────────────────────────────────────── -->
+  <nav class="navbar fm-navbar sticky-top">
+    <div class="container-xl d-flex align-items-center justify-content-between w-100">
+
+      <a class="fm-logo" href="#" onclick="navigateTo('home'); return false;">
+        Foodie<em>Menu</em>
+      </a>
+
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn fm-navlink active" id="nav-home" onclick="navigateTo('home')">
+          <i class="bi bi-house-fill"></i>
+          <span class="d-none d-md-inline ms-1">Trang chủ</span>
+        </button>
+        <button class="btn fm-navlink" id="nav-menu" onclick="navigateTo('menu')">
+          <i class="bi bi-grid-fill"></i>
+          <span class="d-none d-md-inline ms-1">Thực đơn</span>
+        </button>
+        <a href="admin.html" class="btn fm-navlink" style="color:var(--fm-amber)!important">
+          <i class="bi bi-gear-fill"></i>
+          <span class="d-none d-md-inline ms-1">Admin</span>
+        </a>
+        <button class="btn fm-cart-btn" onclick="navigateTo('cart')">
+          <i class="bi bi-cart3"></i>
+          <span class="d-none d-sm-inline">Giỏ hàng</span>
+          <span class="fm-cart-badge d-none" id="cart-badge">0</span>
+        </button>
+      </div>
+
+    </div>
+  </nav>
+
+  <!-- ── Views (chỉ 1 view hiển thị tại một thời điểm) ─ -->
+  <div id="view-home">
+    <!-- Được render bởi main.js → renderHome() -->
+  </div>
+
+  <div id="view-menu" class="d-none">
+    <!-- Được render bởi main.js → renderMenu() -->
+  </div>
+
+  <div id="view-cart" class="d-none">
+    <!-- Được render bởi main.js → renderCart() -->
+  </div>
+
+  <!-- ── Toast container ─────────────────────────────── -->
+  <div id="toast-container"
+       class="position-fixed bottom-0 end-0 p-3"
+       style="z-index:9999"></div>
+
+  <!-- ── Scripts (thứ tự quan trọng) ────────────────── -->
+  <script src="js/utils.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/main.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

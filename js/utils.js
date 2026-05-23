@@ -1,0 +1,132 @@
+/**
+ * utils.js — Các hàm tiện ích dùng chung
+ * Bao gồm: format tiền, validate form, toast, debounce, cart helpers
+ */
+
+const CART_KEY = 'fm_cart';
+
+const Utils = {
+
+  /** Format số tiền sang định dạng Việt Nam: 65000 → "65.000đ" */
+  formatPrice(n) {
+    return new Intl.NumberFormat('vi-VN').format(Number(n)) + 'đ';
+  },
+
+  /** Validate dữ liệu form sản phẩm. Trả về mảng lỗi ([] = hợp lệ) */
+  validateProduct(data) {
+    const errors = [];
+    if (!data.name || !String(data.name).trim())
+      errors.push('Tên món không được để trống');
+    if (!data.price || isNaN(data.price) || Number(data.price) <= 0)
+      errors.push('Giá phải là số dương hợp lệ');
+    if (!data.category)
+      errors.push('Vui lòng chọn danh mục');
+    return errors;
+  },
+
+  /**
+   * Hiển thị toast notification
+   * @param {string} message
+   * @param {'success'|'error'|'warning'|'info'} type
+   */
+  showToast(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const cfg = {
+      success: { icon: '✅', bg: '#1A0A00' },
+      error:   { icon: '❌', bg: '#C62828' },
+      warning: { icon: '⚠️', bg: '#E65100' },
+      info:    { icon: 'ℹ️', bg: '#01579B' },
+    };
+    const { icon, bg } = cfg[type] || cfg.success;
+
+    const el = document.createElement('div');
+    el.className = 'fm-toast';
+    el.style.background = bg;
+
+    // Dùng DOM API + textContent — tránh XSS khi message chứa tên món từ user data
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'fm-toast-icon';
+    iconSpan.textContent = icon;
+
+    const msgSpan = document.createElement('span');
+    msgSpan.className = 'fm-toast-msg';
+    msgSpan.textContent = message;
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'fm-toast-close';
+    closeBtn.textContent = '×';
+    closeBtn.addEventListener('click', () => el.remove());
+
+    el.append(iconSpan, msgSpan, closeBtn);
+    container.appendChild(el);
+    setTimeout(() => el.remove(), 3200);
+  },
+
+  /**
+   * Debounce: trì hoãn thực thi hàm sau khi người dùng ngừng gõ
+   * @param {Function} fn
+   * @param {number} delay  ms
+   */
+  debounce(fn, delay = 300) {
+    let timer;
+    return function (...args) {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn.apply(this, args), delay);
+    };
+  },
+
+  // ── Cart helpers ─────────────────────────────────────
+
+  /** Đọc giỏ hàng từ localStorage */
+  loadCart() {
+    try {
+      return JSON.parse(localStorage.getItem(CART_KEY) || '[]');
+    } catch {
+      return [];
+    }
+  },
+
+  /** Lưu giỏ hàng vào localStorage */
+  saveCart(cart) {
+    localStorage.setItem(CART_KEY, JSON.stringify(cart));
+  },
+
+  /** Xóa giỏ hàng */
+  clearCart() {
+    localStorage.removeItem(CART_KEY);
+  },
+
+  // ── Misc helpers ──────────────────────────────────────
+
+  /** Trả về emoji icon theo danh mục */
+  getCategoryIcon(cat) {
+    const map = {
+      'Phở': '🍜', 'Bún': '🍝', 'Cơm': '🍚',
+      'Bánh': '🥖', 'Đồ uống': '☕', 'Tráng miệng': '🍮',
+    };
+    return map[cat] || '🍽️';
+  },
+
+  /**
+   * Sanitize URL ảnh để dùng trong src attribute.
+   * Chỉ cho phép http/https — chặn javascript:, data:, và attribute injection.
+   * Trả về URL đã escape hoặc fallback placeholder nếu không hợp lệ.
+   */
+  safeImgSrc(url, fallback = 'img/placeholder.png') {
+    const s = String(url || '').trim();
+    if (!s || !/^https?:\/\//i.test(s)) return fallback;
+    return this.escapeHtml(s);
+  },
+
+  /** Escape chuỗi để chèn an toàn vào HTML (text node hoặc attribute) */
+  escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#x27;');
+  },
+};
