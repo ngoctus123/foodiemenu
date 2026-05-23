@@ -5,6 +5,9 @@
 
 const CART_KEY = 'fm_cart';
 
+// SVG data-URI placeholder — hiển thị khi ảnh lỗi, không phụ thuộc file local
+const PLACEHOLDER_IMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23F5EDE0'/%3E%3Ccircle cx='200' cy='130' r='58' fill='%23EEE3D3' stroke='%23C8A882' stroke-width='3'/%3E%3Ccircle cx='200' cy='130' r='43' fill='none' stroke='%23C8A882' stroke-width='1.5' stroke-dasharray='5,4'/%3E%3Ctext x='200' y='218' text-anchor='middle' fill='%23C8A882' font-size='13' font-family='sans-serif'%3ENo image%3C/text%3E%3C/svg%3E";
+
 const Utils = {
 
   /** Format số tiền sang định dạng Việt Nam: 65000 → "65.000đ" */
@@ -103,8 +106,12 @@ const Utils = {
   /** Trả về emoji icon theo danh mục */
   getCategoryIcon(cat) {
     const map = {
+      'Khai vị': '🥗', 'Món chính': '🍜', 'Bánh mặn': '🥟',
+      'Bánh tráng miệng': '🍰', 'Tráng miệng': '🍮',
+      'Đồ uống lạnh': '🧋', 'Đồ uống nóng': '☕', 'Set/Combo': '🎁',
+      // Legacy
       'Phở': '🍜', 'Bún': '🍝', 'Cơm': '🍚',
-      'Bánh': '🥖', 'Đồ uống': '☕', 'Tráng miệng': '🍮',
+      'Bánh': '🥖', 'Đồ uống': '☕',
     };
     return map[cat] || '🍽️';
   },
@@ -114,7 +121,7 @@ const Utils = {
    * Chỉ cho phép http/https — chặn javascript:, data:, và attribute injection.
    * Trả về URL đã escape hoặc fallback placeholder nếu không hợp lệ.
    */
-  safeImgSrc(url, fallback = 'img/placeholder.png') {
+  safeImgSrc(url, fallback = PLACEHOLDER_IMG) {
     const s = String(url || '').trim();
     if (!s || !/^https?:\/\//i.test(s)) return fallback;
     return this.escapeHtml(s);
@@ -130,3 +137,6 @@ const Utils = {
       .replace(/'/g, '&#x27;');
   },
 };
+
+// Expose cho inline onerror handlers trong template strings
+Utils.PLACEHOLDER = PLACEHOLDER_IMG;

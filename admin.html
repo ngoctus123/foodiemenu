@@ -127,9 +127,16 @@
         <h2 class="fm-section-title mb-1">Quản lý Thực đơn</h2>
         <p class="text-muted small mb-0">Thêm, sửa, xóa các món ăn trong hệ thống</p>
       </div>
-      <button class="btn fm-btn-primary d-flex align-items-center gap-2" onclick="openAddModal()">
-        <i class="bi bi-plus-lg"></i> Thêm món mới
-      </button>
+      <div class="d-flex gap-2 flex-wrap">
+        <button class="btn fm-btn-outline d-flex align-items-center gap-2"
+          onclick="confirmReset()" title="Khôi phục toàn bộ về thực đơn mặc định">
+          <i class="bi bi-arrow-counterclockwise"></i>
+          <span class="d-none d-sm-inline">Reset dữ liệu</span>
+        </button>
+        <button class="btn fm-btn-primary d-flex align-items-center gap-2" onclick="openAddModal()">
+          <i class="bi bi-plus-lg"></i> Thêm món mới
+        </button>
+      </div>
     </div>
 
     <!-- Thống kê -->
@@ -206,12 +213,14 @@
             <div class="col-6">
               <label class="fm-label" for="f-category">Danh mục</label>
               <select id="f-category" class="form-select fm-input">
-                <option>Phở</option>
-                <option>Bún</option>
-                <option>Cơm</option>
-                <option>Bánh</option>
-                <option>Đồ uống</option>
+                <option>Khai vị</option>
+                <option>Món chính</option>
+                <option>Bánh mặn</option>
+                <option>Bánh tráng miệng</option>
                 <option>Tráng miệng</option>
+                <option>Đồ uống lạnh</option>
+                <option>Đồ uống nóng</option>
+                <option>Set/Combo</option>
               </select>
             </div>
           </div>
@@ -226,11 +235,41 @@
             </div>
           </div>
 
-          <!-- Mô tả -->
+          <!-- Mô tả ngắn -->
           <div class="mb-3">
-            <label class="fm-label" for="f-desc">Mô tả</label>
+            <label class="fm-label" for="f-desc">Mô tả ngắn</label>
             <textarea id="f-desc" class="form-control fm-input" rows="2"
-              placeholder="Mô tả ngắn về món ăn..."></textarea>
+              placeholder="Mô tả ngắn hiển thị trên card..."></textarea>
+          </div>
+
+          <!-- Mô tả chi tiết -->
+          <div class="mb-3">
+            <label class="fm-label" for="f-detail">Mô tả chi tiết</label>
+            <textarea id="f-detail" class="form-control fm-input" rows="3"
+              placeholder="Mô tả chi tiết hiển thị trong modal..."></textarea>
+          </div>
+
+          <!-- Thành phần -->
+          <div class="mb-3">
+            <label class="fm-label" for="f-ingredients">Thành phần / Nguyên liệu</label>
+            <input type="text" id="f-ingredients" class="form-control fm-input"
+              placeholder="VD: Bánh phở, thịt bò, hành, tiêu...">
+          </div>
+
+          <!-- Tags -->
+          <div class="mb-3">
+            <label class="fm-label">Tags</label>
+            <div class="d-flex flex-wrap gap-2 mt-1">
+              <label class="fm-tag-check">
+                <input type="checkbox" id="f-tag-hot" value="Bán chạy"> 🔥 Bán chạy
+              </label>
+              <label class="fm-tag-check">
+                <input type="checkbox" id="f-tag-new" value="Món mới"> ✨ Món mới
+              </label>
+              <label class="fm-tag-check">
+                <input type="checkbox" id="f-tag-sale" value="Ưu đãi"> 🏷 Ưu đãi
+              </label>
+            </div>
           </div>
 
           <!-- Trạng thái -->
@@ -272,7 +311,7 @@
       <div class="modal-content fm-modal">
 
         <div class="modal-header border-0 pb-0">
-          <h5 class="modal-title fm-modal-title" style="font-size:18px">
+          <h5 class="modal-title fm-modal-title" id="confirm-modal-title" style="font-size:18px">
             🗑 Xác nhận xóa
           </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>

@@ -671,3 +671,357 @@ body {
 @media (max-width: 480px) {
   .fm-login-card { padding: 32px 20px; }
 }
+
+/* ── Tags: Bán chạy / Món mới / Ưu đãi ──────────────── */
+.fm-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 20px;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+}
+.fm-tag-hot  { background: #FFF3E0; color: var(--fm-primary); }
+.fm-tag-new  { background: #E8F5E9; color: #2E7D32; }
+.fm-tag-sale { background: #F3E5F5; color: #6A1B9A; }
+
+/* Badges trên góc ảnh card */
+.fm-card-img { position: relative; }
+.fm-card-tags {
+  position: absolute;
+  top: 8px; left: 8px;
+  display: flex; flex-wrap: wrap; gap: 4px;
+}
+
+/* ── Lọc giá ─────────────────────────────────────────── */
+.fm-price-pill {
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1.5px solid var(--fm-border);
+  background: #fff;
+  color: var(--fm-muted);
+  transition: all .15s;
+  font-family: 'DM Sans', sans-serif;
+}
+.fm-price-pill:hover { border-color: var(--fm-amber); color: var(--fm-amber); }
+.fm-price-pill.active { background: var(--fm-amber); color: #fff; border-color: var(--fm-amber); }
+
+/* ── Sắp xếp ─────────────────────────────────────────── */
+.fm-sort-select {
+  border: 1.5px solid var(--fm-border) !important;
+  border-radius: 8px !important;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  background: #fff;
+  color: var(--fm-dark);
+  cursor: pointer;
+}
+.fm-sort-select:focus { border-color: var(--fm-primary) !important; box-shadow: none !important; }
+
+/* ── Modal chi tiết sản phẩm ────────────────────────── */
+.fm-detail-img {
+  position: relative;
+  width: 100%;
+  max-height: 280px;
+  overflow: hidden;
+  border-radius: 20px 20px 0 0;
+}
+.fm-detail-img img {
+  width: 100%;
+  height: 260px;
+  object-fit: cover;
+  display: block;
+}
+.fm-detail-body {
+  padding: 20px 24px 24px;
+}
+.fm-detail-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  color: var(--fm-dark);
+  line-height: 1.2;
+}
+.fm-detail-price {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--fm-primary);
+  margin: 8px 0 10px;
+}
+.fm-detail-desc {
+  color: var(--fm-muted);
+  font-size: 14px;
+  line-height: 1.7;
+  margin-bottom: 12px;
+}
+.fm-detail-section {
+  background: var(--fm-warm);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.fm-detail-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--fm-muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 5px;
+}
+
+/* ── Hero badges ─────────────────────────────────────── */
+.fm-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,.12);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,.22);
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  backdrop-filter: blur(4px);
+}
+
+/* ── Đánh giá ────────────────────────────────────────── */
+.fm-review-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(26,10,0,.07);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.fm-review-stars { font-size: 17px; color: var(--fm-amber); letter-spacing: 1px; }
+.fm-review-text {
+  color: var(--fm-muted);
+  font-size: 14px;
+  line-height: 1.65;
+  flex-grow: 1;
+  font-style: italic;
+  margin: 0;
+}
+.fm-review-author {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--fm-border);
+}
+.fm-review-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--fm-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+/* ── Thông tin nhà hàng ──────────────────────────────── */
+.fm-info-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(26,10,0,.07);
+  height: 100%;
+}
+.fm-info-icon { font-size: 26px; margin-bottom: 8px; }
+.fm-info-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--fm-muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 6px;
+}
+.fm-info-value { font-size: 14px; line-height: 1.65; color: var(--fm-dark); }
+
+/* ── Combo card ──────────────────────────────────────── */
+.fm-combo-card {
+  background: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(26,10,0,.07);
+  display: flex;
+  flex-direction: column;
+  transition: all .25s;
+}
+.fm-combo-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(26,10,0,.12); }
+.fm-combo-img {
+  position: relative;
+  height: 160px;
+  overflow: hidden;
+}
+.fm-combo-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fm-combo-badge {
+  position: absolute;
+  top: 10px; right: 10px;
+  background: var(--fm-primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+.fm-combo-body { padding: 16px; flex-grow: 1; display: flex; flex-direction: column; }
+.fm-combo-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 16px;
+  margin-bottom: 6px;
+  color: var(--fm-dark);
+}
+.fm-combo-desc { font-size: 13px; color: var(--fm-muted); line-height: 1.5; margin-bottom: 8px; }
+.fm-combo-list {
+  list-style: none;
+  padding: 0; margin: 0;
+  font-size: 12px;
+  color: var(--fm-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* ── Giỏ hàng: note hotline ──────────────────────────── */
+.fm-cart-note {
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,.12);
+  font-size: 13px;
+  color: rgba(255,255,255,.8);
+}
+
+/* ── Store status modal ─────────────────────────────────────────────── */
+.fm-store-status-dialog {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  display: flex;
+  align-items: flex-end;
+  min-height: 100%;
+  pointer-events: none;
+}
+
+.fm-store-status-modal {
+  width: 100%;
+  border: none;
+  border-radius: 26px 26px 0 0;
+  padding: 34px 20px 30px;
+  text-align: center;
+  background: #fff;
+  color: var(--fm-dark);
+  box-shadow: 0 -16px 48px rgba(0,0,0,.18);
+  pointer-events: auto;
+}
+
+.fm-store-status-icon {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--fm-warm);
+  color: var(--fm-primary);
+  font-size: 24px;
+}
+
+.fm-store-status-title {
+  font-size: clamp(30px, 8vw, 46px);
+  line-height: 1.12;
+  margin: 0 0 8px;
+  color: #050505;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.fm-store-status-hours {
+  font-size: clamp(19px, 5vw, 28px);
+  line-height: 1.25;
+  color: #111;
+  margin: 0 0 10px;
+}
+
+.fm-store-status-copy {
+  max-width: 560px;
+  margin: 0 auto 24px;
+  color: var(--fm-muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.fm-store-status-actions {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.fm-store-status-exit,
+.fm-store-status-menu {
+  min-width: 150px;
+  min-height: 58px;
+  border-radius: 17px;
+  color: #fff !important;
+  border: none;
+  font-size: 20px;
+  font-weight: 600;
+  padding: 12px 22px;
+}
+
+.fm-store-status-exit {
+  background: #FDBD31 !important;
+}
+
+.fm-store-status-menu {
+  background: #FF6742 !important;
+}
+
+.fm-store-status-exit:hover,
+.fm-store-status-menu:hover {
+  filter: brightness(.96);
+}
+
+/* ── Admin: tags checkboxes ──────────────────────────── */
+.fm-tag-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  background: var(--fm-warm);
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1.5px solid var(--fm-border);
+  transition: all .15s;
+  user-select: none;
+}
+.fm-tag-check:hover { border-color: var(--fm-primary); }
+.fm-tag-check input { cursor: pointer; }
+
+/* ── Responsive ──────────────────────────────────────── */
+@media (max-width: 576px) {
+  .fm-detail-img img { height: 200px; }
+  .fm-detail-body { padding: 16px; }
+  .fm-hero-badge { font-size: 12px; padding: 5px 12px; }
+  .fm-store-status-modal { padding: 30px 18px 26px; }
+  .fm-store-status-actions { gap: 12px; }
+  .fm-store-status-exit,
+  .fm-store-status-menu {
+    min-width: 0;
+    flex: 1 1 0;
+    font-size: 18px;
+  }
+}

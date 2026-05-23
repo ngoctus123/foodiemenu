@@ -114,18 +114,24 @@ function _renderTable() {
   }
 
   tbody.innerHTML = adminState.products.map(p => {
-    const name = Utils.escapeHtml(p.name);
-    const desc = Utils.escapeHtml(p.description);
-    const cat  = Utils.escapeHtml(p.category);
+    const name   = Utils.escapeHtml(p.name);
+    const desc   = Utils.escapeHtml(p.description);
+    const cat    = Utils.escapeHtml(p.category);
+    const ptags  = Array.isArray(p.tags) ? p.tags : [];
+    const tagHtml = ptags.map(t => {
+      const tc = t === 'Bán chạy' ? 'hot' : t === 'Món mới' ? 'new' : 'sale';
+      return `<span class="fm-tag fm-tag-${tc}">${Utils.escapeHtml(t)}</span>`;
+    }).join(' ');
     return `
     <tr>
       <td>
         <img src="${Utils.safeImgSrc(p.image)}" alt="${name}" class="fm-table-img"
-          onerror="this.src='img/placeholder.png'">
+          onerror="this.src=Utils.PLACEHOLDER;this.onerror=null">
       </td>
       <td>
         <div class="fw-semibold">${name}</div>
         <div class="text-muted small">${desc}</div>
+        ${tagHtml ? `<div class="mt-1 d-flex flex-wrap gap-1">${tagHtml}</div>` : ''}
       </td>
       <td><span class="fm-badge-cat">${cat}</span></td>
       <td class="fw-bold" style="color:var(--fm-primary)">${Utils.formatPrice(p.price)}</td>
@@ -177,18 +183,35 @@ function openEditModal(id) {
   document.getElementById('f-image').value    = p.image;
   document.getElementById('f-desc').value     = p.description;
 
+  const fDetail = document.getElementById('f-detail');
+  if (fDetail) fDetail.value = p.detail || '';
+  const fIngr = document.getElementById('f-ingredients');
+  if (fIngr) fIngr.value = p.ingredients || '';
+
+  const ptags = Array.isArray(p.tags) ? p.tags : [];
+  const elHot  = document.getElementById('f-tag-hot');
+  const elNew  = document.getElementById('f-tag-new');
+  const elSale = document.getElementById('f-tag-sale');
+  if (elHot)  elHot.checked  = ptags.includes('Bán chạy');
+  if (elNew)  elNew.checked  = ptags.includes('Món mới');
+  if (elSale) elSale.checked = ptags.includes('Ưu đãi');
+
   _previewImage(p.image);
   _updateStatusButtons(p.available);
   adminState.bsModal.show();
 }
 
 function _clearForm() {
-  ['f-name', 'f-price', 'f-image', 'f-desc'].forEach(id => {
+  ['f-name', 'f-price', 'f-image', 'f-desc', 'f-detail', 'f-ingredients'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  ['f-tag-hot', 'f-tag-new', 'f-tag-sale'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.checked = false;
+  });
   const cat = document.getElementById('f-category');
-  if (cat) cat.value = 'Phở';
+  if (cat) cat.value = 'Khai vị';
   _hidePreview();
   _updateStatusButtons(true);
 }
@@ -225,6 +248,11 @@ function _updateStatusButtons(available) {
 
 // ── Lưu sản phẩm (Thêm / Cập nhật) ───────────────────
 async function saveProduct() {
+  const tags = [];
+  if (document.getElementById('f-tag-hot')?.checked)  tags.push('Bán chạy');
+  if (document.getElementById('f-tag-new')?.checked)  tags.push('Món mới');
+  if (document.getElementById('f-tag-sale')?.checked) tags.push('Ưu đãi');
+
   const data = {
     name:        document.getElementById('f-name').value.trim(),
     price:       Number(document.getElementById('f-price').value),
@@ -232,6 +260,9 @@ async function saveProduct() {
     image:       document.getElementById('f-image').value.trim() ||
                  'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80',
     description: document.getElementById('f-desc').value.trim(),
+    detail:      document.getElementById('f-detail')?.value.trim() || '',
+    ingredients: document.getElementById('f-ingredients')?.value.trim() || '',
+    tags,
     available:   adminState.formAvailable,
   };
 
@@ -270,24 +301,15 @@ async function saveProduct() {
 
 /** Hiển thị confirm dialog trước khi xóa */
 function confirmDelete(id, name) {
-  // Dùng modal confirm tùy chỉnh (không dùng window.confirm)
-  const el = document.getElementById('confirm-modal-body');
-  if (el) el.textContent = `Bạn có chắc muốn xóa "${name}" không? Hành động này không thể hoàn tác.`;
-
-  const confirmBtn = document.getElementById('confirm-delete-btn');
-  if (confirmBtn) {
-    // Gán id cần xóa vào nút
-    confirmBtn.onclick = () => _doDelete(id, name);
-  }
-
-  const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
-  modal.show();
+  _showConfirmModal(
+    '🗑 Xác nhận xóa',
+    `Bạn có chắc muốn xóa "${name}" không? Hành động này không thể hoàn tác.`,
+    () => _doDelete(id, name)
+  );
 }
 
 async function _doDelete(id, name) {
-  // Đóng confirm modal
-  bootstrap.Modal.getInstance(document.getElementById('confirmModal'))?.hide();
-
+  _hideConfirmModal();
   try {
     await API.deleteProduct(id);
     Utils.showToast(`Đã xóa "${name}"!`);
@@ -295,4 +317,42 @@ async function _doDelete(id, name) {
   } catch (e) {
     Utils.showToast(e.message || 'Lỗi khi xóa!', 'error');
   }
+}
+
+// ── Reset dữ liệu mặc định ─────────────────────────────
+
+/** Hiển thị confirm trước khi reset */
+function confirmReset() {
+  _showConfirmModal(
+    '♻ Reset dữ liệu',
+    `Khôi phục toàn bộ thực đơn về mặc định (v${API.getDataVersion()})? Tất cả món bạn đã thêm/sửa sẽ bị xóa.`,
+    _doReset
+  );
+}
+
+async function _doReset() {
+  _hideConfirmModal();
+  try {
+    await API.resetData();
+    Utils.showToast('Đã reset về thực đơn mặc định! ✅');
+    await _loadProducts();
+  } catch (e) {
+    Utils.showToast('Lỗi khi reset!', 'error');
+  }
+}
+
+// ── Confirm modal helper ───────────────────────────────
+
+function _showConfirmModal(title, body, onConfirm) {
+  const titleEl = document.getElementById('confirm-modal-title');
+  const bodyEl  = document.getElementById('confirm-modal-body');
+  const btn     = document.getElementById('confirm-delete-btn');
+  if (titleEl) titleEl.textContent = title;
+  if (bodyEl)  bodyEl.textContent  = body;
+  if (btn)     btn.onclick         = onConfirm;
+  new bootstrap.Modal(document.getElementById('confirmModal')).show();
+}
+
+function _hideConfirmModal() {
+  bootstrap.Modal.getInstance(document.getElementById('confirmModal'))?.hide();
 }
