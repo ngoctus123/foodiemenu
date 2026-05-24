@@ -651,6 +651,56 @@ body {
   font-family: 'DM Mono', 'Courier New', monospace;
 }
 
+/* ── Demo credentials box (login screen) ──────────── */
+.fm-demo-credentials {
+  background: #FFF8E1;
+  border: 1.5px solid #FFD54F;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-top: 20px;
+  font-size: 13px;
+}
+.fm-demo-credentials-title {
+  font-weight: 700;
+  color: #E65100;
+  margin-bottom: 8px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+.fm-demo-credentials-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 0;
+  color: var(--fm-dark);
+}
+.fm-demo-credentials-row code {
+  background: rgba(0,0,0,.07);
+  border-radius: 5px;
+  padding: 1px 7px;
+  font-size: 13px;
+  color: #BF360C;
+  font-family: 'DM Mono', 'Courier New', monospace;
+}
+.fm-demo-credentials-note {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #FFD54F;
+  color: var(--fm-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* ── Demo banner (inside admin panel) ───────────────── */
+.fm-demo-banner {
+  background: #7B1FA2;
+  color: #fff;
+  font-size: 13px;
+  padding: 10px 0;
+  line-height: 1.5;
+}
+
 /* ── Auth: Logout button ────────────────────────────── */
 .fm-btn-logout {
   color: #C8A882 !important;
@@ -1011,6 +1061,269 @@ body {
 .fm-tag-check:hover { border-color: var(--fm-primary); }
 .fm-tag-check input { cursor: pointer; }
 
+/* ── Table chip in navbar ────────────────────────────── */
+.fm-table-chip {
+  background: rgba(255,255,255,.1) !important;
+  color: #C8A882 !important;
+  border: 1.5px solid rgba(200,168,130,.3) !important;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 11px;
+  transition: all .18s;
+  white-space: nowrap;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fm-table-chip:hover {
+  background: rgba(232,93,4,.2) !important;
+  border-color: rgba(244,140,6,.5) !important;
+  color: var(--fm-amber) !important;
+}
+.fm-table-chip.fm-table-chip-active {
+  background: rgba(232,93,4,.18) !important;
+  border-color: rgba(244,140,6,.5) !important;
+  color: var(--fm-amber) !important;
+}
+
+/* ── Table selection — section background ────────────── */
+.fm-table-selection-bg {
+  background: linear-gradient(160deg, #FFF3E0 0%, var(--fm-cream) 55%);
+  min-height: calc(100vh - 64px);
+}
+
+/* ── Hero icon ───────────────────────────────────────── */
+.fm-table-hero-icon {
+  width: 64px; height: 64px;
+  background: #fff;
+  border: 2px solid rgba(232,93,4,.22);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  box-shadow: 0 4px 18px rgba(232,93,4,.12);
+}
+.fm-table-hero-icon .fm-table-icon-img {
+  width: 36px; height: 36px;
+  display: block;
+  object-fit: contain;
+}
+
+/* ── Table grid ──────────────────────────────────────── */
+.fm-tables-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 14px;
+  max-width: 740px;
+  margin: 0 auto;
+}
+
+/* ── Table card ──────────────────────────────────────── */
+.fm-table-card {
+  background: #fff;
+  border: 1.5px solid var(--fm-border);
+  border-radius: 16px;
+  padding: 20px 12px 16px;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  transition: all .22s cubic-bezier(.34,1.56,.64,1);
+  user-select: none;
+  box-shadow: 0 1px 8px rgba(26,10,0,.06);
+}
+.fm-table-card:hover {
+  border-color: rgba(232,93,4,.38);
+  transform: translateY(-4px);
+  box-shadow: 0 10px 24px rgba(232,93,4,.13);
+}
+.fm-table-card.selected {
+  border-color: var(--fm-primary);
+  background: linear-gradient(160deg, rgba(232,93,4,.05), #fff);
+  box-shadow: 0 6px 20px rgba(232,93,4,.18);
+}
+.fm-table-card.serving {
+  border-color: rgba(244,140,6,.45);
+  background: linear-gradient(160deg, rgba(244,140,6,.04), #fff);
+}
+
+/* ── Check badge at card corner ──────────────────────── */
+.fm-table-check-badge {
+  position: absolute;
+  top: 8px; right: 8px;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--fm-primary);
+  border: 2px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1;
+  box-shadow: 0 2px 6px rgba(232,93,4,.35);
+}
+
+/* ── Icon box ────────────────────────────────────────── */
+.fm-table-icon-wrap {
+  width: 48px; height: 48px;
+  border-radius: 12px;
+  background: rgba(244,140,6,.09);
+  border: 1.5px solid rgba(244,140,6,.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 10px;
+  transition: background .2s, border-color .2s;
+}
+.fm-table-icon-wrap .fm-table-icon-img {
+  width: 26px; height: 26px;
+  display: block;
+  object-fit: contain;
+}
+.fm-table-card:hover .fm-table-icon-wrap {
+  background: rgba(232,93,4,.1);
+  border-color: rgba(232,93,4,.22);
+}
+.fm-table-card.selected .fm-table-icon-wrap {
+  background: rgba(232,93,4,.12);
+  border-color: rgba(232,93,4,.26);
+}
+.fm-table-card.serving .fm-table-icon-wrap {
+  background: rgba(244,140,6,.12);
+  border-color: rgba(244,140,6,.28);
+}
+
+/* ── Name & status ───────────────────────────────────── */
+.fm-table-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--fm-dark);
+  margin-bottom: 7px;
+}
+.fm-table-pill {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  line-height: 1.4;
+}
+.fm-table-pill.empty   { background: rgba(46,125,50,.09);  color: #2E7D32; }
+.fm-table-pill.serving { background: rgba(244,140,6,.15);  color: #9A5A00; }
+
+/* ── Order history ───────────────────────────────────── */
+.fm-history-card {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid var(--fm-border);
+  padding: 16px 18px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(26,10,0,.05);
+}
+.fm-history-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.fm-history-table {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--fm-primary);
+  background: rgba(232,93,4,.08);
+  padding: 2px 10px;
+  border-radius: 20px;
+}
+.fm-history-time {
+  font-size: 12px;
+  color: var(--fm-muted);
+  align-self: center;
+}
+.fm-history-table-gone {
+  background: rgba(120,120,120,.1);
+  color: var(--fm-muted);
+  text-decoration: line-through;
+}
+.fm-history-status {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.fm-history-status.pending { background: rgba(244,140,6,.12); color: var(--fm-amber); }
+.fm-history-status.done    { background: rgba(46,125,50,.1);   color: #2E7D32; }
+.fm-history-items {
+  border-top: 1px solid var(--fm-border);
+  border-bottom: 1px solid var(--fm-border);
+  padding: 8px 0;
+  margin-bottom: 10px;
+}
+.fm-history-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.fm-history-total {
+  font-weight: 800;
+  font-size: 16px;
+  color: var(--fm-primary);
+}
+
+/* ── Admin section tabs ──────────────────────────────── */
+.fm-admin-section-tab {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--fm-border);
+}
+.fm-admin-tab-btn {
+  background: none;
+  border: none;
+  color: var(--fm-muted);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 20px 12px;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: all .15s;
+  font-family: 'DM Sans', sans-serif;
+}
+.fm-admin-tab-btn.active { color: var(--fm-primary); border-bottom-color: var(--fm-primary); }
+.fm-admin-tab-btn:hover:not(.active) { color: var(--fm-dark); }
+
+/* ── Admin table management cards ───────────────────── */
+.fm-admin-table-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+.fm-admin-table-card {
+  background: #fff;
+  border: 2px solid var(--fm-border);
+  border-radius: 12px;
+  padding: 14px 12px;
+  text-align: center;
+  transition: border-color .15s;
+}
+.fm-admin-table-card.serving { border-color: var(--fm-amber); background: rgba(244,140,6,.04); }
+.fm-admin-table-card.hidden  { opacity: .55; border-style: dashed; }
+.fm-admin-table-card-name    { font-weight: 700; font-size: 14px; color: var(--fm-dark); margin-bottom: 4px; }
+.fm-admin-table-card-status  { font-size: 12px; color: var(--fm-muted); margin-bottom: 10px; }
+.fm-admin-table-card.serving .fm-admin-table-card-status { color: var(--fm-amber); font-weight: 600; }
+.fm-admin-table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+}
+.fm-admin-table-actions .btn { font-size: 11px; padding: 3px 7px; }
+
 /* ── Responsive ──────────────────────────────────────── */
 @media (max-width: 576px) {
   .fm-detail-img img { height: 200px; }
@@ -1024,4 +1337,11 @@ body {
     flex: 1 1 0;
     font-size: 18px;
   }
+  .fm-tables-grid { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 10px; }
+  .fm-table-icon-wrap { width: 42px; height: 42px; border-radius: 10px; }
+  .fm-table-icon-wrap .fm-table-icon-img { width: 22px; height: 22px; }
+  .fm-table-hero-icon { width: 56px; height: 56px; }
+  .fm-table-hero-icon .fm-table-icon-img { width: 30px; height: 30px; }
+  .fm-table-chip { max-width: 90px; font-size: 12px; padding: 5px 9px; }
+  .fm-admin-table-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
 }

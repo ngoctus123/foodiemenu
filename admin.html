@@ -78,6 +78,22 @@
 
       </form>
 
+      <!-- Demo credentials notice -->
+      <div class="fm-demo-credentials" role="note">
+        <div class="fm-demo-credentials-title">
+          <i class="bi bi-exclamation-triangle-fill me-1"></i>DEMO — thông tin đăng nhập
+        </div>
+        <div class="fm-demo-credentials-row">
+          <span>Tên đăng nhập</span><code>admin</code>
+        </div>
+        <div class="fm-demo-credentials-row">
+          <span>Mật khẩu</span><code>admin123</code>
+        </div>
+        <div class="fm-demo-credentials-note">
+          Dữ liệu lưu local — không dùng cho môi trường production.
+        </div>
+      </div>
+
       <!-- Link quay về trang khách -->
       <p class="text-center mt-3 mb-0" style="font-size:13px; color:var(--fm-muted)">
         Bạn là khách hàng?
@@ -118,60 +134,118 @@
     </div>
   </nav>
 
+  <!-- ── Demo security banner ───────────────────────── -->
+  <div class="fm-demo-banner" id="demo-banner" role="alert">
+    <div class="container-xl d-flex align-items-center justify-content-between gap-3 flex-wrap">
+      <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-shield-exclamation fs-5"></i>
+        <span>
+          <strong>Môi trường DEMO.</strong>
+          Xác thực chỉ là client-side — bất kỳ ai cũng có thể đọc dữ liệu qua DevTools Console.
+          Không dùng cho production thật.
+        </span>
+      </div>
+      <button type="button" class="btn-close btn-close-white flex-shrink-0"
+        aria-label="Đóng" onclick="this.closest('#demo-banner').style.display='none'"></button>
+    </div>
+  </div>
+
   <!-- ── Admin App ───────────────────────────────────── -->
   <div class="container-xl py-4 px-3 px-md-4">
 
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
-      <div>
-        <h2 class="fm-section-title mb-1">Quản lý Thực đơn</h2>
-        <p class="text-muted small mb-0">Thêm, sửa, xóa các món ăn trong hệ thống</p>
-      </div>
-      <div class="d-flex gap-2 flex-wrap">
-        <button class="btn fm-btn-outline d-flex align-items-center gap-2"
-          onclick="confirmReset()" title="Khôi phục toàn bộ về thực đơn mặc định">
-          <i class="bi bi-arrow-counterclockwise"></i>
-          <span class="d-none d-sm-inline">Reset dữ liệu</span>
-        </button>
-        <button class="btn fm-btn-primary d-flex align-items-center gap-2" onclick="openAddModal()">
-          <i class="bi bi-plus-lg"></i> Thêm món mới
-        </button>
-      </div>
+    <!-- Tab bar -->
+    <div class="fm-admin-section-tab mb-4">
+      <button class="fm-admin-tab-btn active" data-admin-tab="menu" onclick="switchAdminSection('menu')">
+        🍜 Thực đơn
+      </button>
+      <button class="fm-admin-tab-btn" data-admin-tab="tables" onclick="switchAdminSection('tables')">
+        🍽 Quản lý bàn
+      </button>
     </div>
 
-    <!-- Thống kê -->
-    <div class="row g-3 mb-4" id="admin-stats">
-      <!-- Render bởi admin.js → _renderStats() -->
-      <div class="col-12 text-center py-3">
-        <div class="spinner-border text-warning" role="status"></div>
-      </div>
-    </div>
+    <!-- ── Section: Thực đơn ──────────────────────── -->
+    <div id="section-menu">
 
-    <!-- Bảng sản phẩm -->
-    <div class="fm-table-wrap">
-      <div class="table-responsive">
-        <table class="table fm-table mb-0">
-          <thead>
-            <tr>
-              <th>Ảnh</th>
-              <th>Tên món</th>
-              <th>Danh mục</th>
-              <th>Giá</th>
-              <th>Trạng thái</th>
-              <th>Thao tác</th>
-            </tr>
-          </thead>
-          <tbody id="table-body">
-            <!-- Render bởi admin.js → _renderTable() -->
-            <tr>
-              <td colspan="6" class="text-center py-5">
-                <div class="spinner-border text-warning" role="status"></div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <!-- Header -->
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+        <div>
+          <h2 class="fm-section-title mb-1">Quản lý Thực đơn</h2>
+          <p class="text-muted small mb-0">Thêm, sửa, xóa các món ăn trong hệ thống</p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <button class="btn fm-btn-outline d-flex align-items-center gap-2"
+            onclick="confirmReset()" title="Khôi phục toàn bộ về thực đơn mặc định">
+            <i class="bi bi-arrow-counterclockwise"></i>
+            <span class="d-none d-sm-inline">Reset dữ liệu</span>
+          </button>
+          <button class="btn fm-btn-primary d-flex align-items-center gap-2" onclick="openAddModal()">
+            <i class="bi bi-plus-lg"></i> Thêm món mới
+          </button>
+        </div>
       </div>
-    </div>
+
+      <!-- Thống kê -->
+      <div class="row g-3 mb-4" id="admin-stats">
+        <div class="col-12 text-center py-3">
+          <div class="spinner-border text-warning" role="status"></div>
+        </div>
+      </div>
+
+      <!-- Bảng sản phẩm -->
+      <div class="fm-table-wrap">
+        <div class="table-responsive">
+          <table class="table fm-table mb-0">
+            <thead>
+              <tr>
+                <th>Ảnh</th>
+                <th>Tên món</th>
+                <th>Danh mục</th>
+                <th>Giá</th>
+                <th>Trạng thái</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="table-body">
+              <tr>
+                <td colspan="6" class="text-center py-5">
+                  <div class="spinner-border text-warning" role="status"></div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /section-menu -->
+
+    <!-- ── Section: Quản lý bàn ───────────────────── -->
+    <div id="section-tables" class="d-none">
+
+      <!-- Header -->
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+        <div>
+          <h2 class="fm-section-title mb-1">Quản lý bàn</h2>
+          <p class="text-muted small mb-0">Thêm, sửa, ẩn/hiện bàn và theo dõi trạng thái phục vụ</p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <button class="btn fm-btn-outline d-flex align-items-center gap-2" onclick="confirmResetTables()">
+            <i class="bi bi-arrow-counterclockwise"></i>
+            <span class="d-none d-sm-inline">Reset bàn</span>
+          </button>
+          <button class="btn fm-btn-primary d-flex align-items-center gap-2" onclick="openAddTableModal()">
+            <i class="bi bi-plus-lg"></i> Thêm bàn
+          </button>
+        </div>
+      </div>
+
+      <!-- Grid bàn -->
+      <div id="tables-admin-grid">
+        <div class="text-center py-4">
+          <div class="spinner-border text-warning" role="status"></div>
+        </div>
+      </div>
+
+    </div><!-- /section-tables -->
 
   </div><!-- /container -->
 
@@ -334,6 +408,52 @@
     </div>
   </div>
 
+
+  <!-- ══════════════════════════════════════════════════
+       Modal: Thêm / Chỉnh sửa bàn
+  ══════════════════════════════════════════════════════ -->
+  <div class="modal fade" id="tableModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content fm-modal">
+
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title fm-modal-title" id="table-modal-title">Thêm bàn</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body pt-3">
+          <div class="mb-3">
+            <label class="fm-label" for="f-table-name">Tên bàn *</label>
+            <input type="text" id="f-table-name" class="form-control fm-input"
+              placeholder="VD: Bàn 11" autocomplete="off">
+          </div>
+          <div class="mb-1">
+            <label class="fm-label">Hiển thị với khách</label>
+            <div class="d-flex gap-2 mt-1">
+              <button type="button" id="btn-table-visible"
+                class="btn flex-fill fm-status-btn-active"
+                onclick="setTableFormVisible(true)">
+                👁 Hiện bàn
+              </button>
+              <button type="button" id="btn-table-hidden"
+                class="btn flex-fill fm-status-btn-inactive"
+                onclick="setTableFormVisible(false)">
+                🚫 Ẩn bàn
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer border-0 pt-0">
+          <button class="btn fm-btn-outline" data-bs-dismiss="modal">Hủy</button>
+          <button class="btn fm-btn-primary" onclick="saveTable()">
+            <span id="table-save-btn-text">Thêm bàn</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
 
   </div><!-- /admin-app -->
 

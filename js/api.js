@@ -469,6 +469,49 @@ function _setData(data) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
+// ── Bàn (Tables) ──────────────────────────────────────
+const TABLES_KEY = 'fm_tables';
+
+const DEFAULT_TABLES = Array.from({ length: 10 }, (_, i) => ({
+  id: `tbl-${String(i + 1).padStart(2, '0')}`,
+  name: `Bàn ${String(i + 1).padStart(2, '0')}`,
+  status: 'empty',   // 'empty' | 'serving'
+  visible: true,
+}));
+
+function _getTables() {
+  try {
+    const raw = localStorage.getItem(TABLES_KEY);
+    if (!raw) { _seedTables(); return structuredClone(DEFAULT_TABLES); }
+    return JSON.parse(raw);
+  } catch {
+    _seedTables();
+    return structuredClone(DEFAULT_TABLES);
+  }
+}
+
+function _seedTables() {
+  localStorage.setItem(TABLES_KEY, JSON.stringify(DEFAULT_TABLES));
+}
+
+function _setTables(data) {
+  localStorage.setItem(TABLES_KEY, JSON.stringify(data));
+}
+
+// ── Lịch sử đơn hàng (Order History) ─────────────────
+const ORDER_HISTORY_KEY = 'fm_order_history';
+
+function _getHistory() {
+  try {
+    const raw = localStorage.getItem(ORDER_HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function _setHistory(data) {
+  localStorage.setItem(ORDER_HISTORY_KEY, JSON.stringify(data));
+}
+
 // ── Public API ────────────────────────────────────────
 
 const API = {
@@ -587,5 +630,108 @@ const API = {
   /** Trả về version hiện tại (để admin hiển thị) */
   getDataVersion() {
     return DATA_VERSION;
+  },
+
+  // ── Tables API ─────────────────────────────────────────
+
+  getTables() {
+    return new Promise(resolve => setTimeout(() => resolve(_getTables()), 50));
+  },
+
+  getVisibleTables() {
+    return new Promise(resolve =>
+      setTimeout(() => resolve(_getTables().filter(t => t.visible)), 50)
+    );
+  },
+
+  addTable(name) {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        try {
+          const tables = _getTables();
+          const newTable = { id: `tbl-${Date.now()}`, name: String(name).trim(), status: 'empty', visible: true };
+          _setTables([...tables, newTable]);
+          resolve(newTable);
+        } catch { reject(new Error('Lỗi khi thêm bàn')); }
+      }, 100);
+    });
+  },
+
+  updateTable(id, data) {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        try {
+          const tables = _getTables();
+          const idx = tables.findIndex(t => t.id === id);
+          if (idx === -1) { reject(new Error('Không tìm thấy bàn')); return; }
+          tables[idx] = { ...tables[idx], ...data, id };
+          _setTables(tables);
+          resolve(tables[idx]);
+        } catch (e) { reject(e); }
+      }, 100);
+    });
+  },
+
+  deleteTable(id) {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        try {
+          const tables = _getTables();
+          const filtered = tables.filter(t => t.id !== id);
+          if (filtered.length === tables.length) { reject(new Error('Không tìm thấy bàn')); return; }
+          _setTables(filtered);
+          resolve({ success: true, id });
+        } catch (e) { reject(e); }
+      }, 100);
+    });
+  },
+
+  resetTables() {
+    try {
+      _seedTables();
+      return Promise.resolve(structuredClone(DEFAULT_TABLES));
+    } catch (e) {
+      return Promise.reject(e);
+    }
+  },
+
+  // ── Order History API ──────────────────────────────────
+
+  addOrder(orderData) {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        try {
+          const history = _getHistory();
+          const order = { ...orderData, id: `ord-${Date.now()}`, time: new Date().toISOString(), status: 'pending' };
+          _setHistory([order, ...history]);
+          resolve(order);
+        } catch (e) { reject(e); }
+      }, 100);
+    });
+  },
+
+  getOrders(tableId = null) {
+    return new Promise(resolve => {
+      setTimeout(() => {
+        let orders = _getHistory();
+        if (tableId) orders = orders.filter(o => o.tableId === tableId);
+        resolve(orders);
+      }, 50);
+    });
+  },
+
+  updateOrderStatus(orderId, status) {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        try {
+          const history = _getHistory();
+          const idx = history.findIndex(o => o.id === orderId);
+          if (idx === -1) { reject(new Error('Không tìm thấy đơn')); return; }
+          history[idx] = { ...history[idx], status };
+          _setHistory(history);
+          resolve(history[idx]);
+        } catch (e) { reject(e); }
+      }, 100);
+    });
   },
 };

@@ -18,11 +18,16 @@
   <nav class="navbar fm-navbar sticky-top">
     <div class="container-xl d-flex align-items-center justify-content-between w-100">
 
-      <a class="fm-logo" href="#" onclick="navigateTo('home'); return false;">
-        Foodie<em>Menu</em>
-      </a>
-
       <div class="d-flex align-items-center gap-2">
+        <a class="fm-logo" href="#" onclick="navigateTo('home'); return false;">
+          Foodie<em>Menu</em>
+        </a>
+        <button class="btn fm-table-chip" id="nav-table-chip" onclick="navigateTo('table')" title="Chọn bàn">
+          <i class="bi bi-table me-1"></i>Chọn bàn
+        </button>
+      </div>
+
+      <div class="d-flex align-items-center gap-1 gap-sm-2">
         <button class="btn fm-navlink active" id="nav-home" onclick="navigateTo('home')">
           <i class="bi bi-house-fill"></i>
           <span class="d-none d-md-inline ms-1">Trang chủ</span>
@@ -31,7 +36,11 @@
           <i class="bi bi-grid-fill"></i>
           <span class="d-none d-md-inline ms-1">Thực đơn</span>
         </button>
-        <a href="admin.html" class="btn fm-navlink" style="color:var(--fm-amber)!important">
+        <button class="btn fm-navlink" id="nav-history" onclick="navigateTo('history')">
+          <i class="bi bi-clock-history"></i>
+          <span class="d-none d-md-inline ms-1">Lịch sử</span>
+        </button>
+        <a href="admin.html" class="btn fm-navlink d-none d-sm-inline-flex" style="color:var(--fm-amber)!important">
           <i class="bi bi-gear-fill"></i>
           <span class="d-none d-md-inline ms-1">Admin</span>
         </a>
@@ -56,6 +65,14 @@
 
   <div id="view-cart" class="d-none">
     <!-- Được render bởi main.js → renderCart() -->
+  </div>
+
+  <div id="view-table" class="d-none">
+    <!-- Được render bởi main.js → renderTableSelection() -->
+  </div>
+
+  <div id="view-history" class="d-none">
+    <!-- Được render bởi main.js → renderHistory() -->
   </div>
 
   <!-- ══════════════════════════════════════════════════

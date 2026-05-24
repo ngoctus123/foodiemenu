@@ -24,6 +24,7 @@ function initAdmin() {
   _adminInitialized = true;
 
   adminState.bsModal = new bootstrap.Modal(document.getElementById('productModal'));
+  _initTableSection();
 
   // Đóng modal → reset preview ảnh
   document.getElementById('productModal').addEventListener('hidden.bs.modal', () => {
@@ -355,4 +356,202 @@ function _showConfirmModal(title, body, onConfirm) {
 
 function _hideConfirmModal() {
   bootstrap.Modal.getInstance(document.getElementById('confirmModal'))?.hide();
+}
+
+// ── Admin section tabs ─────────────────────────────────
+
+function switchAdminSection(section) {
+  ['menu', 'tables'].forEach(s => {
+    const el = document.getElementById(`section-${s}`);
+    if (el) el.classList.toggle('d-none', s !== section);
+    const btn = document.querySelector(`[data-admin-tab="${s}"]`);
+    if (btn) btn.classList.toggle('active', s === section);
+  });
+  if (section === 'tables') _loadAdminTables();
+}
+
+// ── Quản lý bàn ────────────────────────────────────────
+
+const _tableState = {
+  tables:      [],
+  editId:      null,    // null = adding | string = editing
+  formVisible: true,
+  bsModal:     null,
+};
+
+function _initTableSection() {
+  _tableState.bsModal = new bootstrap.Modal(document.getElementById('tableModal'));
+
+  // Delegation for delete table buttons
+  document.getElementById('tables-admin-grid').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-del-table-id]');
+    if (!btn) return;
+    confirmDeleteTable(btn.dataset.delTableId, btn.dataset.delTableName);
+  });
+}
+
+async function _loadAdminTables() {
+  const el = document.getElementById('tables-admin-grid');
+  if (el) el.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-warning" role="status"></div></div>`;
+  try {
+    _tableState.tables = await API.getTables();
+    _renderAdminTables();
+  } catch {
+    Utils.showToast('Lỗi tải danh sách bàn', 'error');
+  }
+}
+
+function _renderAdminTables() {
+  const el = document.getElementById('tables-admin-grid');
+  if (!el) return;
+
+  if (_tableState.tables.length === 0) {
+    el.innerHTML = `<p class="text-center text-muted py-4">Chưa có bàn nào. Nhấn "Thêm bàn" để bắt đầu.</p>`;
+    return;
+  }
+
+  el.innerHTML = `<div class="fm-admin-table-grid">${_tableState.tables.map(t => {
+    const name      = Utils.escapeHtml(t.name);
+    const isServing = t.status === 'serving';
+    const isHidden  = !t.visible;
+    const statusLbl = isHidden ? '🚫 Ẩn' : isServing ? '🍽 Đang phục vụ' : '✅ Trống';
+    return `
+      <div class="fm-admin-table-card ${isServing ? 'serving' : ''} ${isHidden ? 'hidden' : ''}">
+        <div class="fm-admin-table-card-name">${name}</div>
+        <div class="fm-admin-table-card-status">${statusLbl}</div>
+        <div class="fm-admin-table-actions">
+          <button class="btn btn-sm fm-btn-outline" title="${isServing ? 'Đặt trống' : 'Đặt đang phục vụ'}"
+            onclick="toggleTableStatus('${t.id}', '${t.status}')">
+            ${isServing ? '↩ Trống' : '🍽 Phục vụ'}
+          </button>
+          <button class="btn btn-sm fm-btn-outline" title="${isHidden ? 'Hiện bàn' : 'Ẩn bàn'}"
+            onclick="toggleTableVisible('${t.id}', ${t.visible})">
+            ${isHidden ? '👁 Hiện' : '🚫 Ẩn'}
+          </button>
+          <button class="btn btn-sm fm-btn-outline" onclick="openEditTableModal('${t.id}')">
+            ✏ Sửa
+          </button>
+          <button class="btn btn-sm fm-btn-danger"
+            data-del-table-id="${t.id}" data-del-table-name="${name}">
+            🗑
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('')}</div>`;
+}
+
+function openAddTableModal() {
+  _tableState.editId = null;
+  _tableState.formVisible = true;
+  document.getElementById('table-modal-title').textContent = '➕ Thêm bàn';
+  document.getElementById('table-save-btn-text').textContent = 'Thêm bàn';
+  document.getElementById('f-table-name').value = '';
+  _updateTableModalBtns(true);
+  _tableState.bsModal.show();
+}
+
+function openEditTableModal(id) {
+  const t = _tableState.tables.find(x => x.id === id);
+  if (!t) { Utils.showToast('Không tìm thấy bàn', 'error'); return; }
+  _tableState.editId = id;
+  _tableState.formVisible = t.visible;
+  document.getElementById('table-modal-title').textContent = '✏ Chỉnh sửa bàn';
+  document.getElementById('table-save-btn-text').textContent = 'Lưu thay đổi';
+  document.getElementById('f-table-name').value = t.name;
+  _updateTableModalBtns(t.visible);
+  _tableState.bsModal.show();
+}
+
+function setTableFormVisible(visible) {
+  _tableState.formVisible = visible;
+  _updateTableModalBtns(visible);
+}
+
+function _updateTableModalBtns(visible) {
+  const btnV = document.getElementById('btn-table-visible');
+  const btnH = document.getElementById('btn-table-hidden');
+  if (btnV) btnV.className = `btn flex-fill ${visible ? 'fm-status-btn-active' : 'fm-status-btn-inactive'}`;
+  if (btnH) btnH.className = `btn flex-fill ${!visible ? 'fm-status-btn-danger-active' : 'fm-status-btn-inactive'}`;
+}
+
+async function saveTable() {
+  const name = document.getElementById('f-table-name').value.trim();
+  if (!name) { Utils.showToast('Vui lòng nhập tên bàn!', 'error'); return; }
+
+  const saveTxt = document.getElementById('table-save-btn-text');
+  if (saveTxt) saveTxt.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Đang lưu...`;
+
+  try {
+    if (_tableState.editId) {
+      await API.updateTable(_tableState.editId, { name, visible: _tableState.formVisible });
+      Utils.showToast(`Đã cập nhật "${name}"! ✅`);
+    } else {
+      await API.addTable(name);
+      Utils.showToast(`Đã thêm "${name}"! ✅`);
+    }
+    _tableState.bsModal.hide();
+    await _loadAdminTables();
+  } catch (e) {
+    Utils.showToast(e.message || 'Đã xảy ra lỗi!', 'error');
+  } finally {
+    if (saveTxt) saveTxt.textContent = _tableState.editId ? 'Lưu thay đổi' : 'Thêm bàn';
+  }
+}
+
+async function toggleTableStatus(id, currentStatus) {
+  const newStatus = currentStatus === 'serving' ? 'empty' : 'serving';
+  try {
+    await API.updateTable(id, { status: newStatus });
+    await _loadAdminTables();
+  } catch (e) {
+    Utils.showToast(e.message || 'Lỗi cập nhật trạng thái', 'error');
+  }
+}
+
+async function toggleTableVisible(id, currentVisible) {
+  try {
+    await API.updateTable(id, { visible: !currentVisible });
+    await _loadAdminTables();
+  } catch (e) {
+    Utils.showToast(e.message || 'Lỗi cập nhật hiển thị', 'error');
+  }
+}
+
+function confirmDeleteTable(id, name) {
+  _showConfirmModal(
+    '🗑 Xác nhận xóa bàn',
+    `Bạn có chắc muốn xóa "${name}" không? Hành động này không thể hoàn tác.`,
+    () => _doDeleteTable(id, name)
+  );
+}
+
+async function _doDeleteTable(id, name) {
+  _hideConfirmModal();
+  try {
+    await API.deleteTable(id);
+    Utils.showToast(`Đã xóa "${name}"!`);
+    await _loadAdminTables();
+  } catch (e) {
+    Utils.showToast(e.message || 'Lỗi khi xóa bàn!', 'error');
+  }
+}
+
+function confirmResetTables() {
+  _showConfirmModal(
+    '♻ Reset danh sách bàn',
+    'Khôi phục về Bàn 01–10 mặc định? Tất cả bàn bạn đã thêm/sửa sẽ bị xóa.',
+    _doResetTables
+  );
+}
+
+async function _doResetTables() {
+  _hideConfirmModal();
+  try {
+    await API.resetTables();
+    Utils.showToast('Đã reset về danh sách bàn mặc định! ✅');
+    await _loadAdminTables();
+  } catch {
+    Utils.showToast('Lỗi khi reset bàn!', 'error');
+  }
 }
