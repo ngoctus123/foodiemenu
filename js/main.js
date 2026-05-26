@@ -95,6 +95,12 @@ document.addEventListener('click', (e) => {
   if (closeExitBtn) { _hideStoreStatusModal(); return; }
   const closeMenuBtn = e.target.closest('[data-store-close-menu]');
   if (closeMenuBtn) { _hideStoreStatusModal(); navigateTo('menu'); return; }
+  // Nút +/- số lượng trong giỏ hàng
+  const qtyBtn = e.target.closest('[data-cart-delta]');
+  if (qtyBtn) { updateQty(Number(qtyBtn.dataset.cartId), Number(qtyBtn.dataset.cartDelta)); return; }
+  // Nút xóa khỏi giỏ hàng
+  const removeBtn = e.target.closest('[data-cart-remove]');
+  if (removeBtn) { removeFromCart(Number(removeBtn.dataset.cartRemove)); return; }
   // Chọn bàn từ lưới bàn
   const tableCard = e.target.closest('[data-select-table]');
   if (tableCard) { selectTable(tableCard.dataset.selectTable); return; }
@@ -743,14 +749,14 @@ function renderCart() {
                 <div class="fw-bold text-truncate">${Utils.escapeHtml(item.name)}</div>
                 <div class="text-muted small">${Utils.escapeHtml(item.category)}</div>
                 <div class="fm-qty-ctrl mt-2">
-                  <button class="fm-qty-btn" onclick="updateQty(${item.id}, -1)">−</button>
+                  <button class="fm-qty-btn" data-cart-delta="-1" data-cart-id="${item.id}">−</button>
                   <span class="fm-qty-val">${item.qty}</span>
-                  <button class="fm-qty-btn" onclick="updateQty(${item.id}, +1)">+</button>
+                  <button class="fm-qty-btn" data-cart-delta="1" data-cart-id="${item.id}">+</button>
                 </div>
               </div>
               <div class="text-end flex-shrink-0">
                 <div class="fm-price mb-2">${Utils.formatPrice(item.price * item.qty)}</div>
-                <button class="fm-remove-btn" onclick="removeFromCart(${item.id})" title="Xóa">
+                <button class="fm-remove-btn" data-cart-remove="${item.id}" title="Xóa">
                   <i class="bi bi-trash3"></i>
                 </button>
               </div>
@@ -820,7 +826,12 @@ async function placeOrder() {
   }
 
   // Chụp snapshot giỏ hàng ngay tại thời điểm xác nhận, trước khi await
-  const orderItems = state.cart.map(i => ({ id: i.id, name: i.name, qty: i.qty, price: i.price }));
+  const orderItems = state.cart.map(i => ({
+    id:    i.id,
+    name:  i.name,
+    qty:   Math.max(1, Math.floor(Number(i.qty)   || 1)),
+    price: Math.max(0,             Number(i.price) || 0),
+  }));
   const orderTotal = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
 
   await new Promise(r => setTimeout(r, 1600));
@@ -1126,8 +1137,8 @@ async function renderHistory() {
           <div class="fm-history-items">
             ${(o.items || []).map(i => `
               <div class="d-flex justify-content-between small py-1">
-                <span>${Utils.escapeHtml(i.name)} × ${i.qty}</span>
-                <span class="fw-semibold">${Utils.formatPrice(i.price * i.qty)}</span>
+                <span>${Utils.escapeHtml(i.name)} × ${Math.floor(Number(i.qty) || 0)}</span>
+                <span class="fw-semibold">${Utils.formatPrice((Number(i.price) || 0) * (Number(i.qty) || 0))}</span>
               </div>
             `).join('')}
           </div>

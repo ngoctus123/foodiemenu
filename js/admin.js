@@ -382,11 +382,19 @@ const _tableState = {
 function _initTableSection() {
   _tableState.bsModal = new bootstrap.Modal(document.getElementById('tableModal'));
 
-  // Delegation for delete table buttons
+  // Delegation for all table action buttons
   document.getElementById('tables-admin-grid').addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-del-table-id]');
+    const btn = e.target.closest('[data-del-table-id],[data-action]');
     if (!btn) return;
-    confirmDeleteTable(btn.dataset.delTableId, btn.dataset.delTableName);
+    if (btn.dataset.delTableId) {
+      confirmDeleteTable(btn.dataset.delTableId, btn.dataset.delTableName);
+    } else if (btn.dataset.action === 'toggle-status') {
+      toggleTableStatus(btn.dataset.tableId, btn.dataset.tableStatus);
+    } else if (btn.dataset.action === 'toggle-visible') {
+      toggleTableVisible(btn.dataset.tableId, btn.dataset.tableVisible === 'true');
+    } else if (btn.dataset.action === 'edit-table') {
+      openEditTableModal(btn.dataset.tableId);
+    }
   });
 }
 
@@ -412,6 +420,9 @@ function _renderAdminTables() {
 
   el.innerHTML = `<div class="fm-admin-table-grid">${_tableState.tables.map(t => {
     const name      = Utils.escapeHtml(t.name);
+    const escId     = Utils.escapeHtml(String(t.id));
+    const escStatus = Utils.escapeHtml(String(t.status));
+    const escVis    = Utils.escapeHtml(String(t.visible));
     const isServing = t.status === 'serving';
     const isHidden  = !t.visible;
     const statusLbl = isHidden ? '🚫 Ẩn' : isServing ? '🍽 Đang phục vụ' : '✅ Trống';
@@ -421,18 +432,19 @@ function _renderAdminTables() {
         <div class="fm-admin-table-card-status">${statusLbl}</div>
         <div class="fm-admin-table-actions">
           <button class="btn btn-sm fm-btn-outline" title="${isServing ? 'Đặt trống' : 'Đặt đang phục vụ'}"
-            onclick="toggleTableStatus('${t.id}', '${t.status}')">
+            data-action="toggle-status" data-table-id="${escId}" data-table-status="${escStatus}">
             ${isServing ? '↩ Trống' : '🍽 Phục vụ'}
           </button>
           <button class="btn btn-sm fm-btn-outline" title="${isHidden ? 'Hiện bàn' : 'Ẩn bàn'}"
-            onclick="toggleTableVisible('${t.id}', ${t.visible})">
+            data-action="toggle-visible" data-table-id="${escId}" data-table-visible="${escVis}">
             ${isHidden ? '👁 Hiện' : '🚫 Ẩn'}
           </button>
-          <button class="btn btn-sm fm-btn-outline" onclick="openEditTableModal('${t.id}')">
+          <button class="btn btn-sm fm-btn-outline"
+            data-action="edit-table" data-table-id="${escId}">
             ✏ Sửa
           </button>
           <button class="btn btn-sm fm-btn-danger"
-            data-del-table-id="${t.id}" data-del-table-name="${name}">
+            data-del-table-id="${escId}" data-del-table-name="${name}">
             🗑
           </button>
         </div>

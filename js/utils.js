@@ -82,10 +82,22 @@ const Utils = {
 
   // ── Cart helpers ─────────────────────────────────────
 
-  /** Đọc giỏ hàng từ localStorage */
+  /** Đọc giỏ hàng từ localStorage, normalize để chặn dữ liệu bị sửa */
   loadCart() {
     try {
-      return JSON.parse(localStorage.getItem(CART_KEY) || '[]');
+      const raw = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
+      if (!Array.isArray(raw)) return [];
+      return raw
+        .filter(i => i && typeof i === 'object' && Number.isFinite(Number(i.id)))
+        .map(i => ({
+          ...i,
+          id:       Number(i.id),
+          qty:      Math.max(1, Math.floor(Number(i.qty) || 1)),
+          price:    Math.max(0, Number(i.price) || 0),
+          name:     String(i.name     || ''),
+          category: String(i.category || ''),
+          image:    String(i.image    || ''),
+        }));
     } catch {
       return [];
     }
@@ -123,7 +135,10 @@ const Utils = {
    */
   safeImgSrc(url, fallback = PLACEHOLDER_IMG) {
     const s = String(url || '').trim();
-    if (!s || !/^https?:\/\//i.test(s)) return fallback;
+    if (!s) return fallback;
+    // Whitelist: absolute http/https or relative paths only (no file:, blob:, data:, unknown schemes)
+    if (!/^https?:\/\//i.test(s) && !/^[a-zA-Z0-9_./-]/.test(s)) return fallback;
+    if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/i.test(s) && !/^https?:/i.test(s)) return fallback;
     return this.escapeHtml(s);
   },
 
