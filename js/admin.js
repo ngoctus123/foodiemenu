@@ -423,17 +423,21 @@ function _renderAdminTables() {
     const escId     = Utils.escapeHtml(String(t.id));
     const escStatus = Utils.escapeHtml(String(t.status));
     const escVis    = Utils.escapeHtml(String(t.visible));
-    const isServing = t.status === 'serving';
-    const isHidden  = !t.visible;
-    const statusLbl = isHidden ? '🚫 Ẩn' : isServing ? '🍽 Đang phục vụ' : '✅ Trống';
+    const isServing  = t.status === 'serving';
+    const isReserved = t.status === 'reserved';
+    const isHidden   = !t.visible;
+    const statusLbl  = isHidden ? '🚫 Ẩn' : isServing ? '🍽 Đang phục vụ' : isReserved ? '🔵 Đã đặt' : '✅ Trống';
+    const cardCls    = isServing ? 'serving' : isReserved ? 'reserved' : '';
+    const toggleLbl  = isServing ? '↩ Trống' : isReserved ? '↩ Về trống' : '🍽 Phục vụ';
+    const toggleTtl  = isServing ? 'Đặt trống' : isReserved ? 'Hủy giữ chỗ, về trống' : 'Đặt đang phục vụ';
     return `
-      <div class="fm-admin-table-card ${isServing ? 'serving' : ''} ${isHidden ? 'hidden' : ''}">
+      <div class="fm-admin-table-card ${cardCls} ${isHidden ? 'hidden' : ''}">
         <div class="fm-admin-table-card-name">${name}</div>
         <div class="fm-admin-table-card-status">${statusLbl}</div>
         <div class="fm-admin-table-actions">
-          <button class="btn btn-sm fm-btn-outline" title="${isServing ? 'Đặt trống' : 'Đặt đang phục vụ'}"
+          <button class="btn btn-sm fm-btn-outline" title="${toggleTtl}"
             data-action="toggle-status" data-table-id="${escId}" data-table-status="${escStatus}">
-            ${isServing ? '↩ Trống' : '🍽 Phục vụ'}
+            ${toggleLbl}
           </button>
           <button class="btn btn-sm fm-btn-outline" title="${isHidden ? 'Hiện bàn' : 'Ẩn bàn'}"
             data-action="toggle-visible" data-table-id="${escId}" data-table-visible="${escVis}">
@@ -512,7 +516,11 @@ async function saveTable() {
 }
 
 async function toggleTableStatus(id, currentStatus) {
-  const newStatus = currentStatus === 'serving' ? 'empty' : 'serving';
+  if (currentStatus === 'reserved') {
+    const ok = window.confirm('Bàn này đang được giữ chỗ. Chuyển về trống sẽ hủy trạng thái đặt bàn. Tiếp tục?');
+    if (!ok) return;
+  }
+  const newStatus = (currentStatus === 'serving' || currentStatus === 'reserved') ? 'empty' : 'serving';
   try {
     await API.updateTable(id, { status: newStatus });
     await _loadAdminTables();
@@ -531,6 +539,11 @@ async function toggleTableVisible(id, currentVisible) {
 }
 
 function confirmDeleteTable(id, name) {
+  const table = _tableState.tables.find(t => t.id === id);
+  if (table && (table.status === 'reserved' || table.status === 'serving')) {
+    Utils.showToast('Không thể xóa bàn đang đặt hoặc đang phục vụ. Hãy hoàn tất/hủy trạng thái bàn trước.', 'warning');
+    return;
+  }
   _showConfirmModal(
     '🗑 Xác nhận xóa bàn',
     `Bạn có chắc muốn xóa "${name}" không? Hành động này không thể hoàn tác.`,

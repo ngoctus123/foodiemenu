@@ -19,10 +19,11 @@
     <div class="container-xl d-flex align-items-center justify-content-between w-100">
 
       <div class="d-flex align-items-center gap-2">
-        <a class="fm-logo" href="#" onclick="navigateTo('home'); return false;">
-          Foodie<em>Menu</em>
+        <a class="fm-logo" href="../index.html" title="Về trang giới thiệu FoodieMenu">
+          <i class="bi bi-egg-fried text-warning me-2"></i>
+          <span>FoodieMenu</span>
         </a>
-        <button class="btn fm-table-chip" id="nav-table-chip" onclick="navigateTo('table')" title="Chọn bàn">
+        <button class="btn fm-table-chip" id="nav-table-chip" onclick="navigateTo('table')" title="Chọn bàn" style="display:none">
           <i class="bi bi-table me-1"></i>Chọn bàn
         </button>
       </div>
@@ -49,6 +50,7 @@
           <span class="d-none d-sm-inline">Giỏ hàng</span>
           <span class="fm-cart-badge d-none" id="cart-badge">0</span>
         </button>
+        <span id="auth-chip" class="d-flex align-items-center gap-1"></span>
       </div>
 
     </div>

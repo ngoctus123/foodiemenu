@@ -487,7 +487,7 @@ const TABLES_KEY = 'fm_tables';
 const DEFAULT_TABLES = Array.from({ length: 10 }, (_, i) => ({
   id: `tbl-${String(i + 1).padStart(2, '0')}`,
   name: `Bàn ${String(i + 1).padStart(2, '0')}`,
-  status: 'empty',   // 'empty' | 'serving'
+  status: 'empty',   // 'empty' | 'reserved' | 'serving'
   visible: true,
 }));
 
@@ -501,7 +501,7 @@ function _getTables() {
       ...t,
       id:      String(t.id),
       name:    String(t.name   || ''),
-      status:  t.status === 'serving' ? 'serving' : 'empty',
+      status:  t.status === 'serving' ? 'serving' : t.status === 'reserved' ? 'reserved' : 'empty',
       visible: Boolean(t.visible),
     }));
   } catch {
@@ -516,6 +516,20 @@ function _seedTables() {
 
 function _setTables(data) {
   localStorage.setItem(TABLES_KEY, JSON.stringify(data));
+}
+
+// ── Đặt bàn (Reservations) ────────────────────────────
+const RESERVATIONS_KEY = 'fm_reservations';
+
+function _getReservations() {
+  try {
+    const raw = localStorage.getItem(RESERVATIONS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function _setReservations(data) {
+  localStorage.setItem(RESERVATIONS_KEY, JSON.stringify(data));
 }
 
 // ── Lịch sử đơn hàng (Order History) ─────────────────
@@ -697,9 +711,20 @@ const API = {
       setTimeout(() => {
         try {
           const tables = _getTables();
+          const table = tables.find(t => t.id === id);
+          if (!table) { reject(new Error('Không tìm thấy bàn')); return; }
+          if (table.status === 'reserved' || table.status === 'serving') {
+            reject(new Error('Không thể xóa bàn đang đặt hoặc đang phục vụ.'));
+            return;
+          }
           const filtered = tables.filter(t => t.id !== id);
-          if (filtered.length === tables.length) { reject(new Error('Không tìm thấy bàn')); return; }
           _setTables(filtered);
+          try {
+            const saved = JSON.parse(localStorage.getItem('fm_selected_table') || 'null');
+            if (saved?.id === id) localStorage.removeItem('fm_selected_table');
+          } catch {
+            localStorage.removeItem('fm_selected_table');
+          }
           resolve({ success: true, id });
         } catch (e) { reject(e); }
       }, 100);
@@ -730,13 +755,46 @@ const API = {
     });
   },
 
-  getOrders(tableId = null) {
+  getOrders(tableId = null, customerEmail = null) {
     return new Promise(resolve => {
       setTimeout(() => {
         let orders = _getHistory();
-        if (tableId) orders = orders.filter(o => o.tableId === tableId);
+        if (tableId)      orders = orders.filter(o => o.tableId === tableId);
+        if (customerEmail) orders = orders.filter(o => o.customerEmail === customerEmail);
         resolve(orders);
       }, 50);
+    });
+  },
+
+  // ── Reservations API ──────────────────────────────
+
+  getReservations(date = null) {
+    return new Promise(resolve => {
+      setTimeout(() => {
+        let list = _getReservations().filter(r => r && r.id);
+        if (date) list = list.filter(r => r.date === date);
+        const statusOrder = { pending: 0, reserved: 1, seated: 2, completed: 3, cancelled: 4 };
+        list.sort((a, b) => {
+          const d = (statusOrder[a.status] ?? 5) - (statusOrder[b.status] ?? 5);
+          return d !== 0 ? d : (a.time || '').localeCompare(b.time || '');
+        });
+        resolve(list);
+      }, 50);
+    });
+  },
+
+  updateReservation(id, data) {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        try {
+          const list = _getReservations();
+          const idx = list.findIndex(r => r.id === id);
+          if (idx === -1) { reject(new Error('Không tìm thấy đặt bàn')); return; }
+          list[idx] = { ...list[idx], ...data };
+          _setReservations(list);
+          resolve(list[idx]);
+        } catch (e) { reject(e); }
+      }, 80);
     });
   },
 

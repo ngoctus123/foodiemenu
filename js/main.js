@@ -9,12 +9,14 @@ const SELECTED_TABLE_KEY = 'fm_selected_table';
 
 
 const RESTAURANT = {
-  hotline:  '1800 1234',
-  address:  '123 Đường Lê Lợi, Quận 1, TP. Hồ Chí Minh',
-  email:    'info@foodiemenu.vn',
+  hotline:  '0876 785 977',
+  phone:    '0876785977',
+  address:  'Trường Đại học Đại Nam, Số 1 Phố Xốm, Phú Lãm, Hà Đông, Hà Nội',
+  email:    'tule2077@gmail.com',
   facebook: '#',
-  hours:    { weekday: '07:00 – 22:00', weekend: '06:30 – 23:00' },
-  orderHours: { start: '06:00', end: '15:00' },
+  mapUrl:   'https://www.google.com/maps/search/?api=1&query=Tr%C6%B0%E1%BB%9Dng%20%C4%90%E1%BA%A1i%20h%E1%BB%8Dc%20%C4%90%E1%BA%A1i%20Nam%20S%E1%BB%91%201%20Ph%E1%BB%91%20X%E1%BB%91m%20Ph%C3%BA%20L%C3%A3m%20H%C3%A0%20%C4%90%C3%B4ng%20H%C3%A0%20N%E1%BB%99i',
+  hours:    { weekday: '08:00 – 22:00', weekend: '08:00 – 22:00' },
+  orderHours: { start: '08:00', end: '22:00' },
 };
 
 const REVIEWS = [
@@ -40,18 +42,30 @@ const state = {
 
 let _detailModal = null;
 let _storeStatusModal = null;
+let _customerAuthModal = null;
 let _isOrdering = false;
+
+function _getLocalDateString(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
 
 // ── Khởi tạo ─────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
   state.cart = Utils.loadCart();
+  _seedStaffAccount();
   await _loadSelectedTable();
   await loadProducts();
   _detailModal = new bootstrap.Modal(document.getElementById('productDetailModal'));
   _ensureStoreStatusModal();
+  _ensureCustomerAuthModal();
   syncCartBadge();
-  _updateTableChip();
-  if (!state.selectedTable) {
+  _updateAuthChip(); // gọi trước để _updateTableChip() được gọi bên trong
+  const session = getCustomerSession();
+  // Nhân viên/admin chưa chọn bàn → chuyển đến màn chọn bàn; các trường hợp còn lại → home
+  if (_isStaffOrAdmin(session) && !state.selectedTable) {
     navigateTo('table');
   } else {
     navigateTo('home');
@@ -64,6 +78,7 @@ document.addEventListener('click', (e) => {
   // Nút thêm trong modal chi tiết
   const modalAddBtn = e.target.closest('[data-modal-add-id]');
   if (modalAddBtn) {
+    if (!requireCustomerAuth()) return;
     const product = state.products.find(p => p.id === Number(modalAddBtn.dataset.modalAddId));
     if (product) {
       addToCart(product);
@@ -74,6 +89,7 @@ document.addEventListener('click', (e) => {
   // Nút thêm vào giỏ trên card
   const addBtn = e.target.closest('[data-add-id]');
   if (addBtn) {
+    if (!requireCustomerAuth()) return;
     const product = state.products.find(p => p.id === Number(addBtn.dataset.addId));
     if (product) addToCart(product);
     return;
@@ -104,6 +120,15 @@ document.addEventListener('click', (e) => {
   // Chọn bàn từ lưới bàn
   const tableCard = e.target.closest('[data-select-table]');
   if (tableCard) { selectTable(tableCard.dataset.selectTable); return; }
+  // Reservation panel actions (staff only)
+  const resAssign   = e.target.closest('[data-res-assign]');
+  const resCheckin  = e.target.closest('[data-res-checkin]');
+  const resCancel   = e.target.closest('[data-res-cancel]');
+  const resComplete = e.target.closest('[data-res-complete]');
+  if (resAssign)   { _assignReservationToTable(resAssign.dataset.resAssign);     return; }
+  if (resCheckin)  { _checkinReservation(resCheckin.dataset.resCheckin);         return; }
+  if (resCancel)   { _cancelReservation(resCancel.dataset.resCancel);             return; }
+  if (resComplete) { _completeReservation(resComplete.dataset.resComplete);       return; }
   // Click card để xem chi tiết
   const card = e.target.closest('[data-detail-id]');
   if (card) {
@@ -182,6 +207,15 @@ async function loadProducts() {
 
 // ── Điều hướng ────────────────────────────────────────
 function navigateTo(page) {
+  // Chọn bàn chỉ dành cho nhân viên/admin
+  if (page === 'table') {
+    const session = getCustomerSession();
+    if (!_isStaffOrAdmin(session)) {
+      if (!session) showCustomerAuthModal('login');
+      Utils.showToast('Chức năng chọn bàn chỉ dành cho nhân viên.', 'warning');
+      return;
+    }
+  }
   state.page = page;
   ['home', 'menu', 'cart', 'table', 'history'].forEach(p => {
     const el = document.getElementById(`view-${p}`);
@@ -381,7 +415,7 @@ function _renderRestaurantInfo() {
             <div class="fm-info-icon">📞</div>
             <div class="fm-info-label">Hotline</div>
             <div class="fm-info-value">
-              <a href="tel:18001234" style="color:var(--fm-primary);font-weight:700;text-decoration:none">${RESTAURANT.hotline}</a>
+              <a href="tel:0876785977" style="color:var(--fm-primary);font-weight:700;text-decoration:none">${RESTAURANT.hotline}</a>
               <div class="text-muted small mt-1">Miễn phí cuộc gọi</div>
             </div>
           </div>
@@ -408,7 +442,7 @@ function _renderRestaurantInfo() {
             <div class="fm-info-icon">✉️</div>
             <div class="fm-info-label">Liên hệ</div>
             <div class="fm-info-value">
-              <a href="mailto:${RESTAURANT.email}" style="color:var(--fm-primary);text-decoration:none">${RESTAURANT.email}</a>
+              <a href="mailto:tule2077@gmail.com" style="color:var(--fm-primary);text-decoration:none">${RESTAURANT.email}</a>
             </div>
           </div>
         </div>
@@ -662,7 +696,11 @@ function addToCart(product) {
     Utils.showToast('Đang xử lý đơn hàng, vui lòng đợi...', 'warning');
     return;
   }
-  if (!state.selectedTable) {
+  if (!requireCustomerAuth()) return;
+
+  const session = getCustomerSession();
+  // Nhân viên/admin cần chọn bàn trước; khách thường thì không
+  if (_isStaffOrAdmin(session) && !state.selectedTable) {
     Utils.showToast('Vui lòng chọn bàn trước khi gọi món! 🍽', 'warning');
     navigateTo('table');
     return;
@@ -787,7 +825,7 @@ function renderCart() {
             <div class="fm-cart-note mt-3">
               <div class="d-flex align-items-center gap-2 mb-1">
                 <i class="bi bi-telephone-fill" style="color:var(--fm-amber)"></i>
-                <span>Hotline: <a href="tel:18001234" class="fw-bold" style="color:var(--fm-amber)">${RESTAURANT.hotline}</a></span>
+                <span>Hotline: <a href="tel:0876785977" class="fw-bold" style="color:var(--fm-amber)">${RESTAURANT.hotline}</a></span>
               </div>
               <div class="d-flex align-items-center gap-2 mb-2">
                 <i class="bi bi-clock-fill" style="color:var(--fm-amber)"></i>
@@ -805,80 +843,385 @@ function renderCart() {
 }
 
 async function placeOrder() {
+  // 1. Đang xử lý → bỏ qua
   if (_isOrdering) return;
-  if (!state.selectedTable) {
-    Utils.showToast('Vui lòng chọn bàn trước khi đặt hàng!', 'warning');
-    navigateTo('table');
+  // 2. Chưa đăng nhập → mở modal login
+  if (!requireCustomerAuth('Vui lòng đăng nhập để đặt hàng.')) return;
+  // 3. Giỏ trống
+  if (state.cart.length === 0) {
+    Utils.showToast('Giỏ hàng trống, hãy thêm món trước!', 'warning');
     return;
   }
+  // 4. Cửa hàng đóng
   if (!_isStoreOpen()) {
     _showStoreStatusModal();
     Utils.showToast('Cửa hàng đã đóng cửa, vui lòng quay lại trong giờ nhận đơn.', 'warning');
     return;
   }
-
-  _isOrdering = true;
-
-  const btn = document.getElementById('order-btn');
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Đang xử lý...`;
+  // 5/6. Phân luồng theo role
+  const session = getCustomerSession();
+  if (_isStaffOrAdmin(session)) {
+    if (!state.selectedTable) {
+      Utils.showToast('Vui lòng chọn bàn trước khi đặt hàng tại quán.', 'warning');
+      navigateTo('table');
+      return;
+    }
+    if (state.selectedTable.status === 'reserved') {
+      Utils.showToast('Bàn này đang chờ khách đặt bàn. Vui lòng nhận khách (check-in) trước.', 'warning');
+      navigateTo('table');
+      return;
+    }
+    await _placeOrderForTable();
+  } else {
+    _showOrderTypeModal();
   }
+}
 
-  // Chụp snapshot giỏ hàng ngay tại thời điểm xác nhận, trước khi await
+// Đặt hàng theo bàn (staff)
+async function _placeOrderForTable(extra) {
+  _isOrdering = true;
+  const btn = document.getElementById('order-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Đang xử lý...`; }
+
   const orderItems = state.cart.map(i => ({
     id:    i.id,
     name:  i.name,
-    qty:   Math.max(1, Math.floor(Number(i.qty)   || 1)),
-    price: Math.max(0,             Number(i.price) || 0),
+    qty:   Math.max(1, Math.floor(Number(i.qty) || 1)),
+    price: Math.max(0, Number(i.price) || 0),
   }));
   const orderTotal = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
 
-  await new Promise(r => setTimeout(r, 1600));
+  await new Promise(r => setTimeout(r, 1400));
 
-  // Lưu đơn hàng — nếu thất bại thì khôi phục nút và báo lỗi, không clear cart
   try {
     await API.addOrder({
       tableId:   state.selectedTable.id,
       tableName: state.selectedTable.name,
+      orderType: 'table',
       items:     orderItems,
       total:     orderTotal,
+      ...(extra || {}),
     });
   } catch (e) {
     _isOrdering = false;
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = '🛍 Đặt hàng ngay';
-    }
+    if (btn) { btn.disabled = false; btn.innerHTML = '🛍 Đặt hàng ngay'; }
     Utils.showToast(e.message || 'Không thể lưu đơn hàng. Vui lòng thử lại!', 'error');
     return;
   }
 
-  // Cập nhật trạng thái bàn — không quan trọng nếu thất bại
   try {
     await API.updateTable(state.selectedTable.id, { status: 'serving' });
     state.selectedTable = { ...state.selectedTable, status: 'serving' };
     localStorage.setItem(SELECTED_TABLE_KEY, JSON.stringify(state.selectedTable));
     _updateTableChip();
-  } catch { /* trạng thái bàn không ảnh hưởng đến đơn hàng đã lưu */ }
+  } catch { /* không quan trọng */ }
 
-  // Đơn đã lưu thành công — xóa giỏ và hiện màn thành công
   _isOrdering = false;
   state.cart = [];
   Utils.clearCart();
   syncCartBadge();
+  _showOrderSuccess('Đã đặt món thành công! Chúng tôi sẽ lên món trong ít phút. 🎉');
+}
 
+// Đặt hàng mang về (customer)
+async function _placeOrderTakeaway() {
+  _isOrdering = true;
+  const orderItems = state.cart.map(i => ({
+    id:    i.id,
+    name:  i.name,
+    qty:   Math.max(1, Math.floor(Number(i.qty) || 1)),
+    price: Math.max(0, Number(i.price) || 0),
+  }));
+  const orderTotal = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
+
+  await new Promise(r => setTimeout(r, 1200));
+
+  const takeawaySession = getCustomerSession();
+  try {
+    await API.addOrder({
+      orderType:     'takeaway',
+      customerEmail: takeawaySession?.email || '',
+      customerName:  takeawaySession?.name  || '',
+      items:         orderItems,
+      total:         orderTotal,
+    });
+  } catch (e) {
+    _isOrdering = false;
+    Utils.showToast(e.message || 'Không thể lưu đơn hàng. Vui lòng thử lại!', 'error');
+    return;
+  }
+
+  _isOrdering = false;
+  state.cart = [];
+  Utils.clearCart();
+  syncCartBadge();
+  _showOrderSuccess('Đặt món mang về thành công! Vui lòng đến quầy FoodieMenu để nhận món. 🎉');
+}
+
+// Đặt hàng giao về nhà (customer)
+async function _placeOrderDelivery(deliveryInfo, payment) {
+  _isOrdering = true;
+  const orderItems = state.cart.map(i => ({
+    id:    i.id,
+    name:  i.name,
+    qty:   Math.max(1, Math.floor(Number(i.qty) || 1)),
+    price: Math.max(0, Number(i.price) || 0),
+  }));
+  const orderTotal = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
+
+  await new Promise(r => setTimeout(r, 1400));
+
+  const deliverySession = getCustomerSession();
+  try {
+    await API.addOrder({
+      orderType:     'delivery',
+      customerEmail: deliverySession?.email || '',
+      customerName:  deliverySession?.name  || '',
+      deliveryInfo,
+      payment,
+      items:         orderItems,
+      total:         orderTotal,
+    });
+  } catch (e) {
+    _isOrdering = false;
+    Utils.showToast(e.message || 'Không thể lưu đơn hàng. Vui lòng thử lại!', 'error');
+    return;
+  }
+
+  _isOrdering = false;
+  state.cart = [];
+  Utils.clearCart();
+  syncCartBadge();
+  _showOrderSuccess('Đặt hàng giao về nhà thành công! FoodieMenu sẽ liên hệ xác nhận đơn trong ít phút. 🎉');
+}
+
+function _showOrderSuccess(msg) {
   const el = document.getElementById('view-cart');
   if (el) el.innerHTML = `
     <div class="container-xl py-5 px-3">
       <div class="fm-empty text-center py-5">
         <div class="fm-empty-ico">✅</div>
-        <h4 class="fw-bold mt-3 mb-2">Đã đặt món thành công!</h4>
-        <p class="text-muted mb-4">Cảm ơn bạn đã gọi món. Chúng tôi sẽ lên món trong ít phút nữa.</p>
+        <h4 class="fw-bold mt-3 mb-2">Đặt hàng thành công!</h4>
+        <p class="text-muted mb-4">${Utils.escapeHtml(msg)}</p>
         <button class="btn fm-btn-primary px-4" onclick="navigateTo('menu')">Đặt thêm món</button>
       </div>
     </div>`;
-  Utils.showToast('Đã đặt món thành công! 🎉');
+  Utils.showToast(msg);
+}
+
+// ── Modal: Mang về / Giao về nhà ──────────────────
+
+function _showOrderTypeModal() {
+  const old = document.getElementById('orderTypeModal');
+  if (old) { bootstrap.Modal.getInstance(old)?.dispose(); old.remove(); }
+
+  const total = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
+
+  const el = document.createElement('div');
+  el.className = 'modal fade';
+  el.id = 'orderTypeModal';
+  el.tabIndex = -1;
+  el.setAttribute('aria-hidden', 'true');
+  el.innerHTML = `
+    <div class="modal-dialog modal-dialog-centered" style="max-width:400px">
+      <div class="modal-content fm-modal">
+        <div class="modal-header border-0 pb-1">
+          <h5 class="fm-modal-title" style="font-size:17px">🍽 Bạn muốn nhận món thế nào?</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"
+            style="filter:invert(1) opacity(.55)"></button>
+        </div>
+        <div class="modal-body py-3">
+          <p class="text-muted small mb-3">Tổng đơn: <strong style="color:var(--fm-amber)">${Utils.formatPrice(total)}</strong></p>
+          <div class="d-flex flex-column gap-3">
+            <button class="btn fm-btn-primary w-100 py-3 fw-semibold" id="ot-dine-btn">
+              <i class="bi bi-bag-check me-2"></i>Mang về
+              <div class="small fw-normal opacity-75 mt-1">Đặt trước và đến quầy FoodieMenu nhận món</div>
+            </button>
+            <button class="btn fm-btn-outline w-100 py-3 fw-semibold" id="ot-delivery-btn">
+              <i class="bi bi-truck me-2"></i>Giao về nhà
+              <div class="small fw-normal opacity-75 mt-1">Giao trong 30–45 phút, miễn phí vận chuyển</div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+
+  const modal = new bootstrap.Modal(el);
+  el.querySelector('#ot-dine-btn').addEventListener('click', () => {
+    modal.hide();
+    _placeOrderTakeaway();
+  });
+  el.querySelector('#ot-delivery-btn').addEventListener('click', () => {
+    modal.hide();
+    setTimeout(() => _showDeliveryFormModal(), 200);
+  });
+  el.addEventListener('hidden.bs.modal', () => { modal.dispose(); el.remove(); });
+  modal.show();
+}
+
+function _showDeliveryFormModal() {
+  const old = document.getElementById('deliveryFormModal');
+  if (old) { bootstrap.Modal.getInstance(old)?.dispose(); old.remove(); }
+
+  const session = getCustomerSession();
+  const total   = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
+
+  const BANKS = [
+    { id: 'vcb',  name: 'Vietcombank',  acc: '1234 5678 9012', holder: 'FOODIEMENU VN' },
+    { id: 'mb',   name: 'MB Bank',      acc: '0987 6543 2100', holder: 'FOODIEMENU VN' },
+    { id: 'bidv', name: 'BIDV',         acc: '2109 8765 4321', holder: 'FOODIEMENU VN' },
+    { id: 'tcb',  name: 'Techcombank',  acc: '3456 7890 1234', holder: 'FOODIEMENU VN' },
+    { id: 'acb',  name: 'ACB',          acc: '8765 4321 0987', holder: 'FOODIEMENU VN' },
+  ];
+
+  const el = document.createElement('div');
+  el.className = 'modal fade';
+  el.id = 'deliveryFormModal';
+  el.tabIndex = -1;
+  el.setAttribute('aria-hidden', 'true');
+  el.innerHTML = `
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width:480px">
+      <div class="modal-content fm-modal">
+        <div class="modal-header border-0 pb-1">
+          <h5 class="fm-modal-title" style="font-size:17px"><i class="bi bi-truck me-2"></i>Thông tin giao hàng</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"
+            style="filter:invert(1) opacity(.55)"></button>
+        </div>
+        <div class="modal-body py-3">
+          <!-- Thông tin người nhận -->
+          <p class="fw-semibold mb-2" style="color:var(--fm-amber)">📦 Người nhận</p>
+          <div class="fm-auth-field mb-2">
+            <label class="fm-auth-label">Họ tên người nhận</label>
+            <input type="text" class="fm-auth-input" id="del-name"
+              placeholder="Nguyễn Văn A" value="${Utils.escapeHtml(session?.name || '')}" autocomplete="name">
+            <div class="fm-auth-error d-none" id="del-name-err"></div>
+          </div>
+          <div class="fm-auth-field mb-2">
+            <label class="fm-auth-label">Số điện thoại</label>
+            <input type="tel" class="fm-auth-input" id="del-phone"
+              placeholder="0876785977" autocomplete="tel">
+            <div class="fm-auth-error d-none" id="del-phone-err"></div>
+          </div>
+          <div class="fm-auth-field mb-2">
+            <label class="fm-auth-label">Địa chỉ nhận hàng</label>
+            <input type="text" class="fm-auth-input" id="del-address"
+              placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/TP" autocomplete="street-address">
+            <div class="fm-auth-error d-none" id="del-address-err"></div>
+          </div>
+          <div class="fm-auth-field mb-4">
+            <label class="fm-auth-label">Ghi chú giao hàng <span class="text-muted">(tuỳ chọn)</span></label>
+            <input type="text" class="fm-auth-input" id="del-note"
+              placeholder="Gọi trước khi đến, giao sau 17h...">
+          </div>
+
+          <!-- Thanh toán -->
+          <p class="fw-semibold mb-2" style="color:var(--fm-amber)">💳 Thanh toán</p>
+          <div class="fm-auth-field mb-2">
+            <label class="fm-auth-label">Phương thức thanh toán</label>
+            <select class="fm-auth-input" id="del-payment" style="appearance:auto">
+              <option value="cash">💵 Tiền mặt khi nhận hàng</option>
+              <option value="bank">🏦 Chuyển khoản ngân hàng</option>
+              <option value="momo">💜 Ví MoMo</option>
+              <option value="zalopay">🔵 ZaloPay</option>
+              <option value="vnpay">🔴 VNPay</option>
+            </select>
+          </div>
+
+          <!-- Thông tin ngân hàng (ẩn mặc định) -->
+          <div id="del-bank-section" class="d-none">
+            <div class="fm-auth-field mb-2">
+              <label class="fm-auth-label">Chọn ngân hàng</label>
+              <select class="fm-auth-input" id="del-bank" style="appearance:auto">
+                ${BANKS.map(b => `<option value="${b.id}">${b.name}</option>`).join('')}
+              </select>
+            </div>
+            <div id="del-bank-info" class="fm-delivery-bank-info mb-3">
+            </div>
+          </div>
+
+          <div class="fm-summary mt-3" style="border-radius:10px;padding:14px 16px">
+            <div class="d-flex justify-content-between mb-1 small">
+              <span class="text-white-50">Tổng đơn hàng</span>
+              <span class="fw-bold" style="color:var(--fm-amber)">${Utils.formatPrice(total)}</span>
+            </div>
+            <div class="d-flex justify-content-between small">
+              <span class="text-white-50">Phí giao hàng</span>
+              <span class="text-success fw-semibold">Miễn phí</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-0 pt-0 pb-3">
+          <button type="button" class="btn fm-btn-outline flex-fill" data-bs-dismiss="modal">Hủy</button>
+          <button type="button" class="btn fm-btn-primary flex-fill" id="del-confirm-btn">
+            <i class="bi bi-check-circle me-1"></i>Xác nhận đặt hàng
+          </button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+
+  const modal = new bootstrap.Modal(el, { backdrop: 'static' });
+
+  // Hiện/ẩn thông tin ngân hàng khi đổi phương thức thanh toán
+  const paySelect  = el.querySelector('#del-payment');
+  const bankSec    = el.querySelector('#del-bank-section');
+  const bankSelect = el.querySelector('#del-bank');
+  const bankInfo   = el.querySelector('#del-bank-info');
+
+  function updateBankInfo() {
+    const bank = BANKS.find(b => b.id === bankSelect.value) || BANKS[0];
+    const phone = (el.querySelector('#del-phone')?.value || '').replace(/\s/g, '');
+    const content = `FM ${phone || '09x'} ${Utils.formatPrice(total)}`;
+    bankInfo.innerHTML = `
+      <div class="small mb-1"><span class="text-white-50">Ngân hàng:</span> <strong>${Utils.escapeHtml(bank.name)}</strong></div>
+      <div class="small mb-1"><span class="text-white-50">Số TK:</span> <strong>${Utils.escapeHtml(bank.acc)}</strong></div>
+      <div class="small mb-1"><span class="text-white-50">Chủ TK:</span> <strong>${Utils.escapeHtml(bank.holder)}</strong></div>
+      <div class="small"><span class="text-white-50">Nội dung CK:</span> <strong style="color:var(--fm-amber)">${Utils.escapeHtml(content)}</strong></div>`;
+  }
+
+  paySelect.addEventListener('change', () => {
+    const isBank = paySelect.value === 'bank';
+    bankSec.classList.toggle('d-none', !isBank);
+    if (isBank) updateBankInfo();
+  });
+  bankSelect.addEventListener('change', updateBankInfo);
+  el.querySelector('#del-phone').addEventListener('input', () => { if (paySelect.value === 'bank') updateBankInfo(); });
+
+  // Xác nhận
+  el.querySelector('#del-confirm-btn').addEventListener('click', () => {
+    const name    = (el.querySelector('#del-name')?.value    || '').trim();
+    const phone   = (el.querySelector('#del-phone')?.value   || '').trim();
+    const address = (el.querySelector('#del-address')?.value || '').trim();
+    const note    = (el.querySelector('#del-note')?.value    || '').trim();
+    const method  = paySelect.value;
+
+    let ok = true;
+    if (!name)    { _dfErr('del-name-err',    'Vui lòng nhập họ tên người nhận.'); ok = false; } else _dfErr('del-name-err', '');
+    if (!/^[0-9]{10,11}$/.test(phone.replace(/\s/g,''))) { _dfErr('del-phone-err', 'Số điện thoại 10-11 chữ số.'); ok = false; } else _dfErr('del-phone-err', '');
+    if (!address) { _dfErr('del-address-err', 'Vui lòng nhập địa chỉ nhận hàng.'); ok = false; } else _dfErr('del-address-err', '');
+    if (!ok) return;
+
+    const bank = BANKS.find(b => b.id === bankSelect.value);
+    const content = `FM ${phone.replace(/\s/g,'')} ${Utils.formatPrice(total)}`;
+    const payment = {
+      method,
+      ...(method === 'bank' ? { bankName: bank?.name, bankAcc: bank?.acc, transferContent: content } : {}),
+    };
+
+    modal.hide();
+    _placeOrderDelivery({ receiverName: name, phone, address, note }, payment);
+  });
+
+  el.addEventListener('hidden.bs.modal', () => { modal.dispose(); el.remove(); });
+  modal.show();
+}
+
+function _dfErr(id, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (msg) { el.textContent = msg; el.classList.remove('d-none'); }
+  else      { el.textContent = '';  el.classList.add('d-none'); }
 }
 
 // ── Chọn bàn ──────────────────────────────────────────
@@ -905,6 +1248,14 @@ async function selectTable(tableId) {
     const tables = await API.getVisibleTables();
     const table = tables.find(t => t.id === tableId);
     if (!table) { Utils.showToast('Không tìm thấy bàn', 'error'); return; }
+    if (table.status === 'reserved') {
+      state.selectedTable = null;
+      localStorage.removeItem(SELECTED_TABLE_KEY);
+      _updateTableChip();
+      Utils.showToast('Bàn này đã được đặt. Vui lòng bấm "Nhận khách" trong danh sách đặt bàn trước khi order.', 'warning');
+      document.getElementById('reservation-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
 
     const isSameTable = state.selectedTable && state.selectedTable.id === tableId;
     if (!isSameTable && state.cart.length > 0) {
@@ -991,6 +1342,11 @@ function _showTableChangeModal(newTable, onKeep, onClear) {
 function _updateTableChip() {
   const chip = document.getElementById('nav-table-chip');
   if (!chip) return;
+  const session = getCustomerSession();
+  const isStaff = _isStaffOrAdmin(session);
+  // Ẩn nút Chọn bàn với khách thường và người chưa đăng nhập
+  chip.style.display = isStaff ? '' : 'none';
+  if (!isStaff) return;
   if (state.selectedTable) {
     chip.innerHTML = `<i class="bi bi-table me-1"></i>${Utils.escapeHtml(state.selectedTable.name)}`;
     chip.title = 'Thay đổi bàn';
@@ -1008,6 +1364,9 @@ async function renderTableSelection() {
   const el = document.getElementById('view-table');
   if (!el) return;
 
+  const session = getCustomerSession();
+  const isStaff = _isStaffOrAdmin(session);
+
   el.innerHTML = `
     <div class="fm-table-selection-bg">
       <div class="container-xl py-5 px-3 px-md-4">
@@ -1023,6 +1382,7 @@ async function renderTableSelection() {
             <div class="spinner-border text-warning" role="status"></div>
           </div>
         </div>
+        ${isStaff ? '<div id="reservation-panel" class="mt-5"><div class="text-center py-3"><div class="spinner-border spinner-border-sm text-warning" role="status"></div></div></div>' : ''}
       </div>
     </div>
   `;
@@ -1034,29 +1394,222 @@ async function renderTableSelection() {
 
     if (tables.length === 0) {
       grid.innerHTML = `<p class="text-center text-muted py-4">Không có bàn nào khả dụng. Vui lòng liên hệ nhân viên.</p>`;
-      return;
-    }
-
-    grid.innerHTML = tables.map(t => {
-      const isSelected = state.selectedTable && state.selectedTable.id === t.id;
-      const isServing  = t.status === 'serving';
-      return `
-        <div class="fm-table-card ${isServing ? 'serving' : ''} ${isSelected ? 'selected' : ''}"
-          data-select-table="${Utils.escapeHtml(t.id)}">
-          ${isSelected ? '<div class="fm-table-check-badge">✓</div>' : ''}
-          <div class="fm-table-icon-wrap">
-            <img src="assets/icons/restaurant.png" alt="" class="fm-table-icon-img">
+    } else {
+      grid.innerHTML = tables.map(t => {
+        const isSelected = state.selectedTable && state.selectedTable.id === t.id;
+        const isServing  = t.status === 'serving';
+        const isReserved = t.status === 'reserved';
+        const cardClass  = isServing ? 'serving' : isReserved ? 'reserved' : '';
+        const pillClass  = isServing ? 'serving' : isReserved ? 'reserved' : 'empty';
+        const pillText   = isServing ? '● Đang phục vụ' : isReserved ? '● Đã đặt' : '● Trống';
+        return `
+          <div class="fm-table-card ${cardClass} ${isSelected ? 'selected' : ''}"
+            data-select-table="${Utils.escapeHtml(t.id)}">
+            ${isSelected ? '<div class="fm-table-check-badge">✓</div>' : ''}
+            <div class="fm-table-icon-wrap">
+              <img src="assets/icons/restaurant.png" alt="" class="fm-table-icon-img">
+            </div>
+            <div class="fm-table-name">${Utils.escapeHtml(t.name)}</div>
+            <span class="fm-table-pill ${pillClass}">${pillText}</span>
           </div>
-          <div class="fm-table-name">${Utils.escapeHtml(t.name)}</div>
-          <span class="fm-table-pill ${isServing ? 'serving' : 'empty'}">
-            ${isServing ? '● Đang phục vụ' : '● Trống'}
-          </span>
-        </div>
-      `;
-    }).join('');
+        `;
+      }).join('');
+    }
   } catch {
     Utils.showToast('Lỗi tải danh sách bàn', 'error');
   }
+
+  if (isStaff) await _renderReservationPanel();
+}
+
+// ── Reservation panel (staff only) ────────────────────
+
+async function _renderReservationPanel() {
+  const panel = document.getElementById('reservation-panel');
+  if (!panel) return;
+
+  const today = _getLocalDateString();
+  let allReservations;
+  try { allReservations = await API.getReservations(null); }
+  catch { panel.innerHTML = ''; return; }
+
+  const statusLabel = { pending: 'Chờ xác nhận', reserved: 'Đã xếp bàn', seated: 'Đang phục vụ', completed: 'Hoàn tất', cancelled: 'Đã hủy' };
+  const badgeCls    = { pending: 'bg-warning text-dark', reserved: 'bg-primary', seated: 'bg-success', completed: 'bg-secondary', cancelled: 'bg-danger' };
+
+  const todayList = allReservations.filter(r => r.date === today);
+  const upcomingList = allReservations.filter(r =>
+    r.date > today && (r.status === 'pending' || r.status === 'reserved')
+  );
+  const pendingCount = todayList.filter(r => r.status === 'pending').length;
+
+  const renderReservationRows = (items, emptyText, showDate = false, canAct = true) => (
+    items.length === 0
+      ? `<p class="text-muted small text-center py-3 mb-0">${emptyText}</p>`
+      : items.map(r => `
+        <div class="fm-res-card fm-res-${Utils.escapeHtml(r.status)}">
+          <div class="d-flex align-items-start justify-content-between gap-2 flex-wrap">
+            <div class="min-w-0">
+              <div class="fw-semibold small">${Utils.escapeHtml(r.name)}
+                <span class="text-muted fw-normal">· ${Utils.escapeHtml(r.phone)}</span>
+              </div>
+              <div class="text-muted" style="font-size:0.78rem">
+                ${showDate ? Utils.escapeHtml(r.date) + ' · ' : ''}${Utils.escapeHtml(r.time)} · ${Utils.escapeHtml(String(r.guests))} khách
+                ${r.tableName ? ' · <strong>' + Utils.escapeHtml(r.tableName) + '</strong>' : ''}
+                ${r.note ? ' · ' + Utils.escapeHtml(r.note) : ''}
+              </div>
+            </div>
+            <div class="d-flex align-items-center gap-1 flex-shrink-0 flex-wrap">
+              <span class="badge ${badgeCls[r.status] || 'bg-secondary'}" style="font-size:0.7rem">${statusLabel[r.status] || r.status}</span>
+              ${canAct && r.status === 'pending'  ? `<button class="btn btn-sm fm-res-btn-assign"   data-res-assign="${Utils.escapeHtml(r.id)}">Gán bàn</button>` : ''}
+              ${canAct && r.status === 'reserved' ? `<button class="btn btn-sm fm-res-btn-checkin"  data-res-checkin="${Utils.escapeHtml(r.id)}">Nhận khách</button>` : ''}
+              ${canAct && (r.status === 'pending' || r.status === 'reserved')
+                ? `<button class="btn btn-sm fm-res-btn-cancel" data-res-cancel="${Utils.escapeHtml(r.id)}">Hủy</button>` : ''}
+              ${canAct && r.status === 'seated'   ? `<button class="btn btn-sm fm-res-btn-complete" data-res-complete="${Utils.escapeHtml(r.id)}">Hoàn tất</button>` : ''}
+            </div>
+          </div>
+        </div>
+      `).join('')
+  );
+
+  panel.innerHTML = `
+    <div class="fm-res-panel">
+      <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <h5 class="fw-bold mb-0" style="color:var(--dark)">
+          <i class="bi bi-calendar-check me-2" style="color:var(--fm-amber)"></i>Đặt bàn hôm nay
+        </h5>
+        ${pendingCount ? `<span class="badge bg-warning text-dark">${pendingCount} chờ xử lý</span>` : ''}
+      </div>
+      ${renderReservationRows(todayList, 'Chưa có đặt bàn nào hôm nay.')}
+
+      <div class="d-flex align-items-center justify-content-between mt-4 mb-2 flex-wrap gap-2">
+        <h6 class="fw-bold mb-0" style="color:var(--dark)">
+          <i class="bi bi-calendar-week me-2" style="color:var(--fm-amber)"></i>Đặt bàn sắp tới
+        </h6>
+        ${upcomingList.length ? `<span class="badge bg-light text-dark">${upcomingList.length} lịch</span>` : ''}
+      </div>
+      ${renderReservationRows(upcomingList, 'Chưa có đặt bàn sắp tới.', true, false)}
+    </div>
+  `;
+}
+
+async function _assignReservationToTable(resId) {
+  let tables;
+  try { tables = await API.getVisibleTables(); }
+  catch { Utils.showToast('Lỗi tải bàn', 'error'); return; }
+
+  const emptyTables = tables.filter(t => t.status === 'empty');
+  if (emptyTables.length === 0) {
+    Utils.showToast('Không còn bàn trống.', 'warning'); return;
+  }
+
+  const old = document.getElementById('resAssignModal');
+  if (old) { bootstrap.Modal.getInstance(old)?.dispose(); old.remove(); }
+
+  const el = document.createElement('div');
+  el.className = 'modal fade'; el.id = 'resAssignModal'; el.tabIndex = -1;
+  el.innerHTML = `
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content fm-modal">
+        <div class="modal-header border-0 pb-1">
+          <h6 class="modal-title fw-bold">Chọn bàn cho đặt chỗ</h6>
+          <button class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body pt-1">
+          <div class="d-grid gap-2">
+            ${emptyTables.map(t => `
+              <button class="btn fm-btn-outline text-start" data-assign-table="${Utils.escapeHtml(t.id)}">
+                <i class="bi bi-table me-2"></i>${Utils.escapeHtml(t.name)}
+              </button>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+  const modal = new bootstrap.Modal(el);
+
+  el.addEventListener('click', async ev => {
+    const btn = ev.target.closest('[data-assign-table]');
+    if (!btn) return;
+    const tableId = btn.dataset.assignTable;
+    const table = emptyTables.find(t => t.id === tableId);
+    if (!table) return;
+    modal.hide();
+    try {
+      await Promise.all([
+        API.updateReservation(resId, { status: 'reserved', tableId, tableName: table.name }),
+        API.updateTable(tableId, { status: 'reserved' }),
+      ]);
+      await renderTableSelection();
+      Utils.showToast(`Đã gán ${Utils.escapeHtml(table.name)} cho đặt chỗ.`);
+    } catch (e) { Utils.showToast(e.message || 'Lỗi gán bàn', 'error'); }
+  });
+  el.addEventListener('hidden.bs.modal', () => { modal.dispose(); el.remove(); });
+  modal.show();
+}
+
+async function _checkinReservation(resId) {
+  try {
+    const all = await API.getReservations(null);
+    const res = all.find(r => r.id === resId);
+    if (!res) { Utils.showToast('Không tìm thấy đặt bàn', 'error'); return; }
+    const updates = [API.updateReservation(resId, { status: 'seated' })];
+    if (res.tableId) {
+      updates.push(API.updateTable(res.tableId, { status: 'serving' }));
+      // Auto-select bàn cho nhân viên để order ngay
+      const tableObj = { id: res.tableId, name: res.tableName || res.tableId, status: 'serving' };
+      state.selectedTable = tableObj;
+      localStorage.setItem(SELECTED_TABLE_KEY, JSON.stringify(tableObj));
+      _updateTableChip();
+    }
+    await Promise.all(updates);
+    Utils.showToast(`Đã nhận khách${res.tableName ? ' tại ' + Utils.escapeHtml(res.tableName) : ''}. Bắt đầu phục vụ! 🎉`);
+    navigateTo('menu');
+  } catch (e) { Utils.showToast(e.message || 'Lỗi nhận khách', 'error'); }
+}
+
+async function _cancelReservation(resId) {
+  try {
+    const all = await API.getReservations(null);
+    const res = all.find(r => r.id === resId);
+    if (!res) { Utils.showToast('Không tìm thấy đặt bàn', 'error'); return; }
+    const updates = [API.updateReservation(resId, { status: 'cancelled' })];
+    if (res.tableId) {
+      const tables = await API.getTables();
+      const table = tables.find(t => t.id === res.tableId);
+      if (table && table.status === 'reserved') {
+        updates.push(API.updateTable(res.tableId, { status: 'empty' }));
+      }
+      // Nếu nhân viên đang chọn bàn này thì clear
+      if (state.selectedTable?.id === res.tableId) {
+        state.selectedTable = null;
+        localStorage.removeItem(SELECTED_TABLE_KEY);
+        _updateTableChip();
+      }
+    }
+    await Promise.all(updates);
+    await renderTableSelection();
+    Utils.showToast('Đã hủy đặt bàn.', 'info');
+  } catch (e) { Utils.showToast(e.message || 'Lỗi hủy đặt bàn', 'error'); }
+}
+
+async function _completeReservation(resId) {
+  try {
+    const all = await API.getReservations(null);
+    const res = all.find(r => r.id === resId);
+    if (!res) { Utils.showToast('Không tìm thấy đặt bàn', 'error'); return; }
+    const updates = [API.updateReservation(resId, { status: 'completed' })];
+    if (res.tableId) {
+      updates.push(API.updateTable(res.tableId, { status: 'empty' }));
+      if (state.selectedTable?.id === res.tableId) {
+        state.selectedTable = null;
+        localStorage.removeItem(SELECTED_TABLE_KEY);
+        _updateTableChip();
+      }
+    }
+    await Promise.all(updates);
+    await renderTableSelection();
+    Utils.showToast('Hoàn tất phục vụ. Bàn đã được giải phóng.');
+  } catch (e) { Utils.showToast(e.message || 'Lỗi hoàn tất', 'error'); }
 }
 
 // ── Lịch sử gọi món ───────────────────────────────────
@@ -1065,15 +1618,20 @@ async function renderHistory() {
   const el = document.getElementById('view-history');
   if (!el) return;
 
-  const tableId    = state.selectedTable ? state.selectedTable.id : null;
-  const tableLabel = state.selectedTable ? Utils.escapeHtml(state.selectedTable.name) : 'Tất cả bàn';
+  const session = getCustomerSession();
+  const isStaff = _isStaffOrAdmin(session);
+
+  const pageTitle    = isStaff ? 'Lịch sử gọi món' : 'Lịch sử mua hàng';
+  const pageSubtitle = isStaff
+    ? (state.selectedTable ? Utils.escapeHtml(state.selectedTable.name) : 'Tất cả bàn')
+    : 'Đơn hàng của bạn';
 
   el.innerHTML = `
     <div class="container-xl py-4 px-3 px-md-4">
       <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
         <div>
-          <h2 class="fm-section-title mb-1">Lịch sử gọi món</h2>
-          <p class="text-muted small mb-0">${tableLabel}</p>
+          <h2 class="fm-section-title mb-1">${Utils.escapeHtml(pageTitle)}</h2>
+          <p class="text-muted small mb-0">${pageSubtitle}</p>
         </div>
       </div>
       <div id="history-list">
@@ -1085,14 +1643,21 @@ async function renderHistory() {
   `;
 
   try {
-    // Lấy đơn hàng và danh sách bàn hiện tại song song để join theo tableId
-    const [orders, allTables] = await Promise.all([
-      API.getOrders(tableId),
-      API.getTables(),
-    ]);
+    let orders;
+    let tableMap = new Map();
 
-    // Map tableId → tên hiện tại (nguồn sự thật là fm_tables, không phải snapshot)
-    const tableMap = new Map(allTables.map(t => [t.id, t.name]));
+    if (isStaff) {
+      const tableId = state.selectedTable ? state.selectedTable.id : null;
+      const [rawOrders, allTables] = await Promise.all([
+        API.getOrders(tableId, null),
+        API.getTables(),
+      ]);
+      orders   = rawOrders;
+      tableMap = new Map(allTables.map(t => [t.id, t.name]));
+    } else {
+      // Customer: chỉ đơn của chính họ, không lọc theo bàn
+      orders = await API.getOrders(null, session?.email || '');
+    }
 
     const listEl = document.getElementById('history-list');
     if (!listEl) return;
@@ -1116,24 +1681,66 @@ async function renderHistory() {
         ? '<span class="fm-history-status done">✅ Hoàn thành</span>'
         : '<span class="fm-history-status pending">⏳ Đang xử lý</span>';
 
-      // Tên hiện tại từ fm_tables; fallback về snapshot nếu bàn đã bị xóa
-      const resolvedName = tableMap.has(o.tableId)
-        ? tableMap.get(o.tableId)
-        : o.tableName;
-      const isDeletedTable = !tableMap.has(o.tableId);
-      const tableChipHtml = isDeletedTable
-        ? `<span class="fm-history-table fm-history-table-gone">${Utils.escapeHtml(resolvedName || '')}</span>`
-        : `<span class="fm-history-table">${Utils.escapeHtml(resolvedName || '')}</span>`;
+      // Label loại đơn
+      let typeLabel = '';
+      if (o.orderType === 'delivery') {
+        typeLabel = '<span class="fm-history-type delivery">🚚 Giao hàng</span>';
+      } else if (o.orderType === 'dine-in') { // legacy: đơn cũ trước khi customer flow đổi sang takeaway
+        const label = isStaff ? 'Tại quán' : 'Ăn tại quán';
+        typeLabel = `<span class="fm-history-type dine-in">🍽 ${label}</span>`;
+      } else if (o.orderType === 'takeaway') {
+        typeLabel = '<span class="fm-history-type dine-in">🥡 Mang về</span>';
+      } else if (isStaff && (o.orderType === 'table' || (o.tableId && o.tableId !== 'delivery' && o.tableId !== 'dine-in'))) {
+        typeLabel = '<span class="fm-history-type table">🪑 Theo bàn</span>';
+      }
+
+      // Tên bàn — chỉ hiển thị với đơn theo bàn, chỉ cho staff/admin
+      let tableChipHtml = '';
+      if (isStaff && (o.orderType === 'table' || (!o.orderType && o.tableId && o.tableId !== 'delivery' && o.tableId !== 'dine-in'))) {
+        const resolvedName = tableMap.has(o.tableId) ? tableMap.get(o.tableId) : o.tableName;
+        const gone = !tableMap.has(o.tableId);
+        tableChipHtml = gone
+          ? `<span class="fm-history-table fm-history-table-gone">${Utils.escapeHtml(resolvedName || '')}</span>`
+          : `<span class="fm-history-table">${Utils.escapeHtml(resolvedName || '')}</span>`;
+      }
+
+      // Thông tin giao hàng
+      let deliveryHtml = '';
+      if (o.orderType === 'delivery' && o.deliveryInfo) {
+        const d  = o.deliveryInfo;
+        const pm = o.payment;
+        const pmLabel = pm?.method === 'cash'    ? 'Tiền mặt'
+          : pm?.method === 'bank'    ? `Chuyển khoản (${Utils.escapeHtml(pm.bankName || '')})`
+          : pm?.method === 'momo'    ? 'Ví MoMo'
+          : pm?.method === 'zalopay' ? 'ZaloPay'
+          : pm?.method === 'vnpay'   ? 'VNPay'
+          : (pm?.method || '—');
+        deliveryHtml = `
+          <div class="fm-history-delivery">
+            <div class="small text-muted mb-1">
+              <i class="bi bi-person-fill me-1"></i>${Utils.escapeHtml(d.receiverName || '')}
+              &nbsp;·&nbsp;<i class="bi bi-telephone-fill me-1"></i>${Utils.escapeHtml(d.phone || '')}
+            </div>
+            <div class="small text-muted mb-1">
+              <i class="bi bi-geo-alt-fill me-1"></i>${Utils.escapeHtml(d.address || '')}
+            </div>
+            ${d.note ? `<div class="small text-muted mb-1"><i class="bi bi-chat-text me-1"></i>${Utils.escapeHtml(d.note)}</div>` : ''}
+            <div class="small" style="color:var(--fm-amber)">
+              <i class="bi bi-credit-card me-1"></i>${Utils.escapeHtml(pmLabel)}
+            </div>
+          </div>`;
+      }
 
       return `
         <div class="fm-history-card">
           <div class="fm-history-header">
             <div class="d-flex align-items-center gap-2 flex-wrap">
-              ${tableChipHtml}
+              ${typeLabel}${tableChipHtml}
               <span class="fm-history-time">${timeStr}</span>
             </div>
             ${statusHtml}
           </div>
+          ${deliveryHtml}
           <div class="fm-history-items">
             ${(o.items || []).map(i => `
               <div class="d-flex justify-content-between small py-1">
@@ -1152,4 +1759,340 @@ async function renderHistory() {
   } catch {
     Utils.showToast('Lỗi tải lịch sử đơn hàng', 'error');
   }
+}
+
+// ── Customer Auth ──────────────────────────────────────
+
+const FM_SESSION_KEY = 'fm_customer_session';
+const FM_USERS_KEY   = 'fm_customer_users';
+
+// Tài khoản demo seed sẵn
+const _DEMO_ACCOUNTS = [
+  { name: 'Nhân viên Demo', email: 'staff@foodiemenu.vn', password: '123456', role: 'staff' },
+  { name: 'Admin Demo',     email: 'admin@foodiemenu.vn', password: '123456', role: 'admin' },
+];
+
+function _seedStaffAccount() {
+  const users = _loadUsers();
+  let changed = false;
+  _DEMO_ACCOUNTS.forEach(demo => {
+    const existing = users.find(u => u.email === demo.email);
+    if (existing) {
+      Object.assign(existing, demo);
+      changed = true;
+    } else {
+      users.push(demo);
+      changed = true;
+    }
+  });
+  if (changed) localStorage.setItem(FM_USERS_KEY, JSON.stringify(users));
+  _upgradeDemoSession();
+}
+
+function _upgradeDemoSession() {
+  const session = getCustomerSession();
+  if (!session) return;
+  const demo = _DEMO_ACCOUNTS.find(acc => acc.email === session.email);
+  if (!demo || session.role === demo.role) return;
+  // Demo only: role lưu ở localStorage không phải bảo mật thật nếu chưa có backend.
+  localStorage.setItem(FM_SESSION_KEY, JSON.stringify({
+    ...session,
+    name: demo.name,
+    role: demo.role,
+  }));
+}
+
+// Helper: kiểm tra có quyền staff/admin không
+function _isStaffOrAdmin(session) {
+  return session?.role === 'staff' || session?.role === 'admin';
+}
+
+function _loadUsers() {
+  try { return JSON.parse(localStorage.getItem(FM_USERS_KEY) || '[]'); } catch { return []; }
+}
+
+function getCustomerSession() {
+  try { return JSON.parse(localStorage.getItem(FM_SESSION_KEY) || 'null'); } catch { return null; }
+}
+
+function isCustomerLoggedIn() {
+  return getCustomerSession() !== null;
+}
+
+function requireCustomerAuth(msg) {
+  if (getCustomerSession()) return true;
+  showCustomerAuthModal('login');
+  Utils.showToast(msg || 'Vui lòng đăng nhập hoặc đăng ký để chọn món.', 'warning');
+  return false;
+}
+
+function customerLogout() {
+  state.cart = [];
+  Utils.clearCart();
+  syncCartBadge();
+  localStorage.removeItem(FM_SESSION_KEY);
+  state.selectedTable = null;
+  localStorage.removeItem(SELECTED_TABLE_KEY);
+  _updateAuthChip();
+  Utils.showToast('Bạn đã đăng xuất. Vui lòng đăng nhập để tiếp tục đặt món.', 'info');
+  navigateTo('home');
+}
+
+function showCustomerAuthModal(view) {
+  _ensureCustomerAuthModal();
+  _switchAuthView(view || 'login');
+  if (_customerAuthModal) _customerAuthModal.show();
+}
+
+function _switchAuthView(view) {
+  const loginPanel = document.getElementById('auth-panel-login');
+  const regPanel   = document.getElementById('auth-panel-register');
+  const title      = document.getElementById('auth-modal-title');
+  if (!loginPanel || !regPanel) return;
+  const isReg = view === 'register';
+  loginPanel.classList.toggle('d-none', isReg);
+  regPanel.classList.toggle('d-none', !isReg);
+  if (title) title.textContent = isReg ? 'Tạo tài khoản mới' : 'Đăng nhập để đặt hàng';
+}
+
+function _authFieldError(id, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (msg) { el.textContent = msg; el.classList.remove('d-none'); }
+  else      { el.textContent = '';  el.classList.add('d-none');    }
+}
+
+function _toggleAuthPw(inputId, iconId) {
+  const input = document.getElementById(inputId);
+  const icon  = document.getElementById(iconId);
+  if (!input || !icon) return;
+  const isHidden = input.type === 'password';
+  input.type     = isHidden ? 'text' : 'password';
+  icon.className = isHidden ? 'bi bi-eye-slash' : 'bi bi-eye';
+}
+
+function _handleCustomerLogin() {
+  const idVal = (document.getElementById('auth-login-id')?.value || '').trim();
+  const pwVal =  document.getElementById('auth-login-pw')?.value || '';
+  _authFieldError('auth-login-id-err', '');
+  _authFieldError('auth-login-pw-err', '');
+  let valid = true;
+  if (!idVal) { _authFieldError('auth-login-id-err', 'Vui lòng nhập email hoặc số điện thoại'); valid = false; }
+  if (pwVal.length < 6) { _authFieldError('auth-login-pw-err', 'Mật khẩu phải ít nhất 6 ký tự'); valid = false; }
+  if (!valid) return;
+
+  const users = _loadUsers();
+  const found = users.find(u => u.email === idVal || u.phone === idVal);
+
+  if (found) {
+    if (found.password !== pwVal) {
+      _authFieldError('auth-login-pw-err', 'Mật khẩu không đúng');
+      return;
+    }
+    const session = { name: found.name, email: found.email, role: found.role || 'customer', loginAt: Date.now() };
+    localStorage.setItem(FM_SESSION_KEY, JSON.stringify(session));
+  } else {
+    _authFieldError('auth-login-id-err', 'Email hoặc số điện thoại chưa được đăng ký');
+    return;
+  }
+
+  if (_customerAuthModal) _customerAuthModal.hide();
+  _updateAuthChip();
+  Utils.showToast('Đăng nhập thành công! Bạn có thể đặt hàng ngay 🎉');
+
+  // Nếu nhân viên/admin và chưa chọn bàn → chuyển đến chọn bàn
+  const session = getCustomerSession();
+  if (_isStaffOrAdmin(session) && !state.selectedTable) {
+    setTimeout(() => navigateTo('table'), 350);
+  }
+}
+
+function _handleCustomerRegister() {
+  const nameVal  = (document.getElementById('auth-reg-name')?.value  || '').trim();
+  const emailVal = (document.getElementById('auth-reg-email')?.value || '').trim().toLowerCase();
+  const phoneVal = (document.getElementById('auth-reg-phone')?.value || '').trim();
+  const pwVal    =  document.getElementById('auth-reg-pw')?.value    || '';
+  const pw2Val   =  document.getElementById('auth-reg-pw2')?.value   || '';
+  const terms    =  document.getElementById('auth-reg-terms')?.checked;
+
+  ['auth-reg-name-err','auth-reg-email-err','auth-reg-phone-err',
+   'auth-reg-pw-err','auth-reg-pw2-err','auth-reg-terms-err'].forEach(id => _authFieldError(id, ''));
+
+  let valid = true;
+  if (nameVal.length < 3)                            { _authFieldError('auth-reg-name-err',  'Họ tên ít nhất 3 ký tự');        valid = false; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) { _authFieldError('auth-reg-email-err', 'Email không đúng định dạng');     valid = false; }
+  if (!/^[0-9]{10,11}$/.test(phoneVal))             { _authFieldError('auth-reg-phone-err', 'Số điện thoại 10-11 chữ số');    valid = false; }
+  if (pwVal.length < 6)                              { _authFieldError('auth-reg-pw-err',    'Mật khẩu ít nhất 6 ký tự');     valid = false; }
+  if (pwVal !== pw2Val)                              { _authFieldError('auth-reg-pw2-err',   'Mật khẩu nhập lại không khớp'); valid = false; }
+  if (!terms)                                        { _authFieldError('auth-reg-terms-err', 'Vui lòng đồng ý điều khoản');   valid = false; }
+  if (!valid) return;
+
+  const users = _loadUsers();
+  if (users.find(u => u.email === emailVal)) {
+    _authFieldError('auth-reg-email-err', 'Email này đã được đăng ký rồi.');
+    return;
+  }
+
+  users.push({ name: nameVal, email: emailVal, phone: phoneVal, password: pwVal, role: 'customer', registeredAt: Date.now() });
+  localStorage.setItem(FM_USERS_KEY, JSON.stringify(users));
+
+  // KHÔNG tự đăng nhập — chuyển về form đăng nhập và pre-fill email
+  _switchAuthView('login');
+  const loginIdEl = document.getElementById('auth-login-id');
+  if (loginIdEl) loginIdEl.value = emailVal;
+
+  Utils.showToast('Đăng ký thành công! Vui lòng đăng nhập để tiếp tục đặt món.', 'success');
+}
+
+function _updateAuthChip() {
+  const chip = document.getElementById('auth-chip');
+  if (!chip) return;
+  chip.innerHTML = '';
+  const session = getCustomerSession();
+  if (session) {
+    chip.className = 'fm-auth-chip d-flex align-items-center gap-1';
+    const nameEl = document.createElement('span');
+    nameEl.className = 'fm-auth-name';
+    // textContent — không XSS
+    nameEl.textContent = _isStaffOrAdmin(session)
+      ? `${session.role === 'admin' ? 'Admin' : 'NV'}: ${session.name}`
+      : `Xin chào, ${session.name}`;
+    const logoutBtn = document.createElement('button');
+    logoutBtn.className = 'btn fm-auth-logout-btn';
+    logoutBtn.title = 'Đăng xuất';
+    logoutBtn.innerHTML = '<i class="bi bi-box-arrow-right"></i>';
+    logoutBtn.addEventListener('click', customerLogout);
+    chip.appendChild(nameEl);
+    chip.appendChild(logoutBtn);
+  } else {
+    chip.className = 'fm-auth-chip d-flex align-items-center';
+    const loginBtn = document.createElement('button');
+    loginBtn.className = 'btn fm-auth-login-btn';
+    loginBtn.innerHTML = '<i class="bi bi-person me-1"></i><span class="d-none d-md-inline">Đăng nhập</span>';
+    loginBtn.addEventListener('click', () => showCustomerAuthModal('login'));
+    chip.appendChild(loginBtn);
+  }
+  // Đồng bộ nút Chọn bàn theo role
+  _updateTableChip();
+}
+
+function _ensureCustomerAuthModal() {
+  if (document.getElementById('customerAuthModal') || _customerAuthModal) return;
+
+  const el = document.createElement('div');
+  el.className = 'modal fade';
+  el.id = 'customerAuthModal';
+  el.tabIndex = -1;
+  el.setAttribute('aria-hidden', 'true');
+  el.setAttribute('aria-labelledby', 'auth-modal-title');
+  // HTML là static — không có user data, dùng innerHTML an toàn
+  el.innerHTML = `
+    <div class="modal-dialog modal-dialog-centered fm-auth-dialog">
+      <div class="modal-content fm-modal fm-auth-modal">
+        <div class="modal-header border-0 pb-1">
+          <h5 class="fm-auth-modal-title" id="auth-modal-title">Đăng nhập để đặt hàng</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"
+            style="filter:invert(1) opacity(.55)"></button>
+        </div>
+        <div class="modal-body pt-3 pb-4">
+
+          <!-- Panel: Đăng nhập -->
+          <div id="auth-panel-login">
+            <div class="fm-auth-field mb-3">
+              <label class="fm-auth-label">Email hoặc Số điện thoại</label>
+              <input type="text" class="fm-auth-input" id="auth-login-id"
+                placeholder="Email hoặc số điện thoại" autocomplete="username">
+              <div class="fm-auth-error d-none" id="auth-login-id-err"></div>
+            </div>
+            <div class="fm-auth-field mb-3">
+              <label class="fm-auth-label">Mật khẩu</label>
+              <div class="position-relative">
+                <input type="password" class="fm-auth-input pe-5" id="auth-login-pw"
+                  placeholder="Ít nhất 6 ký tự" autocomplete="current-password">
+                <button type="button" class="fm-pw-toggle" id="auth-login-pw-btn" aria-label="Hiện mật khẩu">
+                  <i class="bi bi-eye" id="auth-login-pw-icon"></i>
+                </button>
+              </div>
+              <div class="fm-auth-error d-none" id="auth-login-pw-err"></div>
+            </div>
+            <div class="mb-3 d-flex align-items-center gap-2">
+              <input type="checkbox" id="auth-remember" class="form-check-input m-0">
+              <label for="auth-remember" class="fm-auth-remember">Ghi nhớ tôi</label>
+            </div>
+            <button type="button" class="btn fm-btn-primary w-100 py-2 mb-3 fw-semibold" id="auth-login-btn">
+              Đăng nhập
+            </button>
+            <p class="text-center small mb-0 fm-auth-switch-text">
+              Chưa có tài khoản? <a href="#" class="fm-auth-link" id="auth-to-register">Đăng ký ngay</a>
+            </p>
+          </div>
+
+          <!-- Panel: Đăng ký -->
+          <div id="auth-panel-register" class="d-none">
+            <div class="fm-auth-field mb-3">
+              <label class="fm-auth-label">Họ và tên</label>
+              <input type="text" class="fm-auth-input" id="auth-reg-name"
+                placeholder="Ít nhất 3 ký tự" autocomplete="name">
+              <div class="fm-auth-error d-none" id="auth-reg-name-err"></div>
+            </div>
+            <div class="fm-auth-field mb-3">
+              <label class="fm-auth-label">Email</label>
+              <input type="email" class="fm-auth-input" id="auth-reg-email"
+                placeholder="example@email.com" autocomplete="email">
+              <div class="fm-auth-error d-none" id="auth-reg-email-err"></div>
+            </div>
+            <div class="fm-auth-field mb-3">
+              <label class="fm-auth-label">Số điện thoại</label>
+              <input type="tel" class="fm-auth-input" id="auth-reg-phone"
+                placeholder="10-11 chữ số" autocomplete="tel">
+              <div class="fm-auth-error d-none" id="auth-reg-phone-err"></div>
+            </div>
+            <div class="fm-auth-field mb-3">
+              <label class="fm-auth-label">Mật khẩu</label>
+              <div class="position-relative">
+                <input type="password" class="fm-auth-input pe-5" id="auth-reg-pw"
+                  placeholder="Ít nhất 6 ký tự" autocomplete="new-password">
+                <button type="button" class="fm-pw-toggle" id="auth-reg-pw-btn" aria-label="Hiện mật khẩu">
+                  <i class="bi bi-eye" id="auth-reg-pw-icon"></i>
+                </button>
+              </div>
+              <div class="fm-auth-error d-none" id="auth-reg-pw-err"></div>
+            </div>
+            <div class="fm-auth-field mb-3">
+              <label class="fm-auth-label">Nhập lại mật khẩu</label>
+              <input type="password" class="fm-auth-input" id="auth-reg-pw2"
+                placeholder="Nhập lại mật khẩu" autocomplete="new-password">
+              <div class="fm-auth-error d-none" id="auth-reg-pw2-err"></div>
+            </div>
+            <div class="mb-2 d-flex align-items-start gap-2">
+              <input type="checkbox" id="auth-reg-terms" class="form-check-input flex-shrink-0" style="margin-top:3px">
+              <label for="auth-reg-terms" class="fm-auth-remember">
+                Tôi đồng ý với điều khoản sử dụng của FoodieMenu
+              </label>
+            </div>
+            <div class="fm-auth-error d-none mb-2" id="auth-reg-terms-err"></div>
+            <button type="button" class="btn fm-btn-primary w-100 py-2 mb-3 fw-semibold" id="auth-reg-btn">
+              Tạo tài khoản
+            </button>
+            <p class="text-center small mb-0 fm-auth-switch-text">
+              Đã có tài khoản? <a href="#" class="fm-auth-link" id="auth-to-login">Đăng nhập</a>
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(el);
+  _customerAuthModal = new bootstrap.Modal(el, { backdrop: true, keyboard: true });
+
+  // Gắn event listeners — không dùng inline onclick
+  el.querySelector('#auth-login-btn').addEventListener('click', _handleCustomerLogin);
+  el.querySelector('#auth-reg-btn').addEventListener('click', _handleCustomerRegister);
+  el.querySelector('#auth-to-register').addEventListener('click', e => { e.preventDefault(); _switchAuthView('register'); });
+  el.querySelector('#auth-to-login').addEventListener('click', e => { e.preventDefault(); _switchAuthView('login'); });
+  el.querySelector('#auth-login-pw-btn').addEventListener('click', () => _toggleAuthPw('auth-login-pw', 'auth-login-pw-icon'));
+  el.querySelector('#auth-reg-pw-btn').addEventListener('click', () => _toggleAuthPw('auth-reg-pw', 'auth-reg-pw-icon'));
+  el.querySelector('#auth-login-pw').addEventListener('keydown', e => { if (e.key === 'Enter') _handleCustomerLogin(); });
+  el.querySelector('#auth-reg-pw2').addEventListener('keydown', e => { if (e.key === 'Enter') _handleCustomerRegister(); });
 }
